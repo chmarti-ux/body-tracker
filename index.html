@@ -307,20 +307,35 @@ input:focus, select:focus { outline: none; border-color: var(--green); }
 
   <div class="sec">Über die App</div>
   <div class="card">
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0">
-      <span style="font-size:14px;color:var(--text)">Version</span>
-      <span style="font-size:14px;color:var(--muted)">1.0</span>
+    <div style="text-align:center;padding:8px 0 16px">
+      <div style="width:60px;height:60px;background:var(--green);border-radius:14px;margin:0 auto 12px;display:flex;align-items:center;justify-content:center">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      </div>
+      <div style="font-size:17px;font-weight:500;color:var(--text)">Body Tracker</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:2px">Version 1.0</div>
     </div>
-    <div style="border-top:0.5px solid var(--border);margin:10px 0"></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0">
-      <span style="font-size:14px;color:var(--text)">Einträge gesamt</span>
-      <span style="font-size:14px;color:var(--muted)" id="settings-count">0</span>
+    <div style="border-top:0.5px solid var(--border);padding-top:14px">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0">
+        <span style="font-size:14px;color:var(--muted)">Entwickelt von</span>
+        <span style="font-size:14px;font-weight:500;color:var(--text)">Christian Marti</span>
+      </div>
+      <div style="border-top:0.5px solid var(--border);margin:6px 0"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0">
+        <span style="font-size:14px;color:var(--muted)">Einträge gesamt</span>
+        <span style="font-size:14px;font-weight:500;color:var(--text)" id="settings-count">0</span>
+      </div>
+      <div style="border-top:0.5px solid var(--border);margin:6px 0"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0">
+        <span style="font-size:14px;color:var(--muted)">Einträge mit Fotos</span>
+        <span style="font-size:14px;font-weight:500;color:var(--text)" id="settings-photos">0</span>
+      </div>
+      <div style="border-top:0.5px solid var(--border);margin:6px 0"></div>
+      <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0">
+        <span style="font-size:14px;color:var(--muted)">Tracking seit</span>
+        <span style="font-size:14px;font-weight:500;color:var(--text)" id="settings-since">–</span>
+      </div>
     </div>
-    <div style="border-top:0.5px solid var(--border);margin:10px 0"></div>
-    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0">
-      <span style="font-size:14px;color:var(--text)">Einträge mit Fotos</span>
-      <span style="font-size:14px;color:var(--muted)" id="settings-photos">0</span>
-    </div>
+    <div style="text-align:center;margin-top:16px;font-size:12px;color:var(--muted)">© 2026 Christian Marti. Alle Rechte vorbehalten.</div>
   </div>
 </div>
 
@@ -828,6 +843,8 @@ function importData(e) {
 function renderSettings() {
   document.getElementById('settings-count').textContent = entries.length;
   document.getElementById('settings-photos').textContent = entries.filter(e => e.photos && Object.keys(e.photos).length > 0).length;
+  const since = entries.length > 0 ? fmtLong(entries[0].date) : '–';
+  document.getElementById('settings-since').textContent = since;
 }
 
 // INIT
