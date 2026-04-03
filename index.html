@@ -310,6 +310,13 @@ input:focus, select:focus { outline: none; border-color: var(--green); }
     <button onclick="saveGoals()" style="width:100%;padding:11px;background:var(--green);color:#fff;border:none;border-radius:var(--r-sm);font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:4px">Ziele speichern</button>
   </div>
 
+  <div class="sec">Persönliche Angaben</div>
+  <div class="card">
+    <div class="fl" style="margin-top:0">Körpergrösse (cm)</div>
+    <input type="number" id="inp-height" placeholder="z.B. 172" step="1" inputmode="numeric" style="margin-bottom:12px">
+    <button onclick="saveHeight()" style="width:100%;padding:11px;background:var(--green);color:#fff;border:none;border-radius:var(--r-sm);font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif">Grösse speichern</button>
+  </div>
+
   <div class="sec">Darstellung</div>
   <div class="card">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0">
@@ -435,13 +442,24 @@ let lbPhotos = [];
 
 let goals = {};
 let darkMode = false;
+let userHeight = 170;
 
 function loadSettings() {
   try {
     const g = localStorage.getItem('bt_goals'); if(g) goals = JSON.parse(g);
     const d = localStorage.getItem('bt_darkmode'); darkMode = d === 'true';
+    const h = localStorage.getItem('bt_height'); if(h) userHeight = parseFloat(h);
     applyDarkMode();
   } catch(e) {}
+}
+
+function saveHeight() {
+  const h = parseFloat(document.getElementById('inp-height').value);
+  if (!h || h < 100 || h > 250) { showToast('Bitte gültige Grösse eingeben'); return; }
+  userHeight = h;
+  localStorage.setItem('bt_height', h);
+  showToast('Grösse gespeichert!');
+  renderDashboard();
 }
 
 function saveGoals() {
@@ -483,9 +501,10 @@ function applyDarkMode() {
   }
 }
 
-function calcBMI(weight, height = 170) {
+function calcBMI(weight) {
   if (!weight) return null;
-  return (weight / ((height/100) * (height/100))).toFixed(1);
+  const h = userHeight / 100;
+  return (weight / (h * h)).toFixed(1);
 }
 
 function progressBar(current, goal, isLower) {
@@ -665,7 +684,36 @@ function renderDashboard() {
       <div style="font-size:11px;color:var(--muted);margin-top:3px">Basiert auf 170cm Körpergrösse</div>
     </div>` : '';
 
-  document.getElementById('dashboard-extra').innerHTML = bmiHtml + recHtml + wochHtml;
+  const first = entries[0];
+  const weeks = Math.round((new Date(last.date) - new Date(first.date)) / (7*86400000));
+  const wE = entries.filter(e => e.weight);
+  const wDiff = wE.length > 1 ? (wE[wE.length-1].weight - wE[0].weight).toFixed(1) : null;
+  const nDiff = (last.nabel && first.nabel) ? (last.nabel - first.nabel).toFixed(1) : null;
+  const hDiff = (last.huefte && first.huefte) ? (last.huefte - first.huefte).toFixed(1) : null;
+  const bDiff = (last.brust && first.brust) ? (last.brust - first.brust).toFixed(1) : null;
+
+  const gesamtHtml = weeks > 0 ? `
+    <div class="sec">Gesamtfortschritt seit Start</div>
+    <div class="card" style="padding:14px 16px">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${fmtLong(first.date)} → ${fmtLong(last.date)} · ${weeks} Woche${weeks!==1?'n':''}</div>
+      ${[
+        {label:'Gewicht', diff:wDiff, unit:'kg', lowerIsBetter:true},
+        {label:'Bauch (Nabel)', diff:nDiff, unit:'cm', lowerIsBetter:true},
+        {label:'Hüfte', diff:hDiff, unit:'cm', lowerIsBetter:true},
+        {label:'Brust', diff:bDiff, unit:'cm', lowerIsBetter:true},
+      ].filter(x=>x.diff!==null).map(x => {
+        const isGood = x.lowerIsBetter ? x.diff < 0 : x.diff > 0;
+        const isNeutral = parseFloat(x.diff) === 0;
+        const color = isNeutral ? 'var(--muted)' : isGood ? '#1D9E75' : '#D85A30';
+        const icon = isNeutral ? '→' : isGood ? '↓' : '↑';
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border)">
+          <span style="font-size:13px;color:var(--muted)">${x.label}</span>
+          <span style="font-size:14px;font-weight:500;color:${color}">${icon} ${Math.abs(x.diff)} ${x.unit}</span>
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
+  document.getElementById('dashboard-extra').innerHTML = gesamtHtml + bmiHtml + recHtml + wochHtml;
 
   document.getElementById('macro-display').innerHTML = `
     <div class="mcard"><div class="mnum">${last.kcal || 1800}</div><div class="mlbl">kcal</div></div>
@@ -1009,6 +1057,7 @@ function renderSettings() {
   if (goals.nabel) document.getElementById('goal-nabel').value = goals.nabel;
   if (goals.huefte) document.getElementById('goal-huefte').value = goals.huefte;
   if (goals.brust) document.getElementById('goal-brust').value = goals.brust;
+  document.getElementById('inp-height').value = userHeight !== 170 ? userHeight : '';
   const toggle = document.getElementById('darkmode-toggle');
   const knob = document.getElementById('darkmode-knob');
   if (toggle && knob) {
