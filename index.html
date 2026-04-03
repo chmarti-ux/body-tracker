@@ -182,7 +182,7 @@ input:focus, select:focus { outline: none; border-color: var(--green); }
   <div class="photo-row" id="last-photos"></div>
   <div class="sec">Einträge verwalten</div>
   <div class="card" id="entries-list"></div>
-  <button onclick="resetAllData()" style="width:100%;padding:12px;background:transparent;color:#D85A30;border:0.5px solid #D85A30;border-radius:var(--r-sm);font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:8px;margin-bottom:4px;">Alle Daten löschen</button>
+
 </div>
 
 <!-- EINTRAG -->
@@ -258,11 +258,6 @@ input:focus, select:focus { outline: none; border-color: var(--green); }
 <!-- GALERIE -->
 <div class="screen" id="screen-galerie">
   <div class="header"><h1>Galerie</h1></div>
-  <div class="ai-box" style="margin-bottom:16px">
-    <div class="ai-label">KI Foto-Analyse</div>
-    <div class="ai-text" id="photo-ai-text">Die KI vergleicht dein erstes und letztes Foto und analysiert sichtbare Veränderungen.</div>
-    <button class="btn-sm" id="photo-ai-btn" onclick="getPhotoAi()">Fotos jetzt analysieren</button>
-  </div>
   <div class="gal-filter">
     <button class="active" onclick="setGalView('alle',this)">Alle</button>
     <button onclick="setGalView('vorne',this)">Vorne</button>
@@ -745,85 +740,6 @@ function renderChart(key) {
   document.getElementById('stat-summary').innerHTML = sum;
 
   document.getElementById('ai-stat').innerHTML = '';
-}
-
-async function getPhotoAi() {
-  const withPhotos = entries.filter(e => e.photos && Object.keys(e.photos).length > 0);
-  if (withPhotos.length < 2) {
-    showToast('Mindestens 2 Einträge mit Fotos nötig');
-    return;
-  }
-  const first = withPhotos[0];
-  const last = withPhotos[withPhotos.length - 1];
-  const weeks = Math.round((new Date(last.date) - new Date(first.date)) / (7*86400000));
-
-  const photoKey = ['front','side','back'].find(k => first.photos[k] && last.photos[k]);
-  if (!photoKey) { showToast('Kein gemeinsames Foto gefunden'); return; }
-
-  const labelMap = {front:'Vorderansicht', side:'Seitenansicht', back:'Rückansicht'};
-  const wFirst = entries.filter(e => e.weight).find(e => e.date >= first.date);
-  const wLast = [...entries].filter(e => e.weight).reverse().find(e => e.date <= last.date);
-
-  const textEl = document.getElementById('photo-ai-text');
-  const btn = document.getElementById('photo-ai-btn');
-  textEl.textContent = 'KI analysiert deine Fotos...';
-  btn.disabled = true; btn.textContent = '...';
-
-  async function resizeForApi(dataUrl) {
-    return new Promise(res => {
-      const img = new Image();
-      img.onload = () => {
-        const canvas = document.createElement('canvas');
-        const MAX = 400;
-        let w = img.width, h = img.height;
-        if (w > h && w > MAX) { h = Math.round(h * MAX / w); w = MAX; }
-        else if (h > MAX) { w = Math.round(w * MAX / h); h = MAX; }
-        canvas.width = w; canvas.height = h;
-        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        res(canvas.toDataURL('image/jpeg', 0.6).split(',')[1]);
-      };
-      img.src = dataUrl;
-    });
-  }
-
-  const b64first = await resizeForApi(first.photos[photoKey]);
-  const b64last = await resizeForApi(last.photos[photoKey]);
-  const mtype = 'image/jpeg';
-
-  const dataStr = `Zeitraum: ${weeks} Wochen (${fmtLong(first.date)} bis ${fmtLong(last.date)}).
-${wFirst ? 'Gewicht Start: ' + wFirst.weight + ' kg.' : ''}
-${wLast ? 'Gewicht aktuell: ' + wLast.weight + ' kg.' : ''}
-Ziel: Body Recomp (Fett abbauen, Muskeln halten). Makros: 1800 kcal, 132g Eiweiss.`;
-
-  try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-20250514',
-        max_tokens: 600,
-        system: 'Du bist ein einfühlsamer Fitness-Coach. Vergleiche die zwei Körper-Fotos (vorher/nachher) sachlich und motivierend. Antworte auf Deutsch in 4-5 Sätzen. Erwähne sichtbare Veränderungen und gib 1-2 konkrete Empfehlungen.',
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'text', text: 'Das ist das VORHER-Foto (' + labelMap[photoKey] + ', ' + fmtLong(first.date) + '):' },
-            { type: 'image', source: { type: 'base64', media_type: mtype, data: b64first } },
-            { type: 'text', text: 'Das ist das NACHHER-Foto (' + labelMap[photoKey] + ', ' + fmtLong(last.date) + '):' },
-            { type: 'image', source: { type: 'base64', media_type: mtype, data: b64last } },
-            { type: 'text', text: 'Zusätzliche Daten: ' + dataStr + '\nBitte vergleiche die sichtbaren Veränderungen und gib eine ehrliche, motivierende Einschätzung.' }
-          ]
-        }]
-      })
-    });
-    const data = await resp.json();
-    const text = data.content?.find(b => b.type === 'text')?.text || 'Keine Antwort erhalten.';
-    textEl.textContent = text;
-    btn.textContent = 'Neu analysieren'; btn.disabled = false;
-  } catch(e) {
-    console.error('Photo AI error:', e);
-    textEl.textContent = 'Fehler: ' + (e.message || 'Unbekannt') + '. Bitte nochmals versuchen.';
-    btn.textContent = 'Nochmals versuchen'; btn.disabled = false;
-  }
 }
 
 // INIT
