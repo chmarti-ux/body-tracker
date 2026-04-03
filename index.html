@@ -258,6 +258,11 @@ input:focus, select:focus { outline: none; border-color: var(--green); }
 <!-- GALERIE -->
 <div class="screen" id="screen-galerie">
   <div class="header"><h1>Galerie</h1></div>
+  <div class="ai-box" style="margin-bottom:16px">
+    <div class="ai-label">KI Foto-Analyse</div>
+    <div class="ai-text" id="photo-ai-text">Die KI vergleicht dein erstes und letztes Foto und analysiert sichtbare Veränderungen.</div>
+    <button class="btn-sm" id="photo-ai-btn" onclick="getPhotoAi()">Fotos jetzt analysieren</button>
+  </div>
   <div class="gal-filter">
     <button class="active" onclick="setGalView('alle',this)">Alle</button>
     <button onclick="setGalView('vorne',this)">Vorne</button>
@@ -497,7 +502,7 @@ function buildAiBox() {
     <div class="ai-box">
       <div class="ai-label">KI-Auswertung</div>
       <div class="ai-text" id="ai-text-content">${tip}</div>
-      <button class="btn-sm" onclick="getAi()">Detaillierte Analyse laden</button>
+
     </div>
   `;
 }
@@ -739,26 +744,39 @@ function renderChart(key) {
   }
   document.getElementById('stat-summary').innerHTML = sum;
 
-  const aiStat = document.getElementById('ai-stat');
-  const keyNames = {gewicht:'Gewicht',schulter:'Schulter',brust:'Brust',nabel:'Bauchumfang',huefte:'Hüfte',arm:'Arme',bein:'Beine'};
-  aiStat.innerHTML = `<div class="ai-box"><div class="ai-label">KI-Analyse: ${keyNames[key]}</div><div class="ai-text" id="ai-stat-text">Tippe auf "Analyse laden" für eine KI-Auswertung dieser Messung.</div><button class="btn-sm" onclick="getStatAi('${key}')">Analyse laden</button></div>`;
+  document.getElementById('ai-stat').innerHTML = '';
 }
 
-async function getStatAi(key) {
-  const keyNames = {gewicht:'Gewicht',schulter:'Schulter',brust:'Brust',nabel:'Bauchumfang',huefte:'Hüfte',arm:'Arme',bein:'Beine'};
-  const first = entries[0], last = entries[entries.length-1];
+async function getPhotoAi() {
+  const withPhotos = entries.filter(e => e.photos && Object.keys(e.photos).length > 0);
+  if (withPhotos.length < 2) {
+    showToast('Mindestens 2 Einträge mit Fotos nötig');
+    return;
+  }
+  const first = withPhotos[0];
+  const last = withPhotos[withPhotos.length - 1];
   const weeks = Math.round((new Date(last.date) - new Date(first.date)) / (7*86400000));
-  let vals = '';
-  if (key === 'gewicht') vals = entries.filter(e => e.weight).map(e => `${e.weight}kg (${fmt(e.date)})`).join(', ');
-  else if (key === 'nabel') vals = entries.map(e => `oben:${e.ob}, Nabel:${e.nabel}, unten:${e.un} (${fmt(e.date)})`).join(' | ');
-  else if (key === 'arm') vals = entries.map(e => `R:${e.rarm}/L:${e.larm}cm (${fmt(e.date)})`).join(', ');
-  else if (key === 'bein') vals = entries.map(e => `R:${e.rbein}/L:${e.lbein}cm (${fmt(e.date)})`).join(', ');
-  else vals = entries.map(e => `${e[key]}cm (${fmt(e.date)})`).join(', ');
 
-  const textEl = document.getElementById('ai-stat-text');
-  const btn = document.querySelector('#ai-stat .btn-sm');
-  textEl.textContent = 'Wird analysiert...';
-  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+  const photoKey = ['front','side','back'].find(k => first.photos[k] && last.photos[k]);
+  if (!photoKey) { showToast('Kein gemeinsames Foto gefunden'); return; }
+
+  const labelMap = {front:'Vorderansicht', side:'Seitenansicht', back:'Rückansicht'};
+  const wFirst = entries.filter(e => e.weight).find(e => e.date >= first.date);
+  const wLast = [...entries].filter(e => e.weight).reverse().find(e => e.date <= last.date);
+
+  const textEl = document.getElementById('photo-ai-text');
+  const btn = document.getElementById('photo-ai-btn');
+  textEl.textContent = 'KI analysiert deine Fotos...';
+  btn.disabled = true; btn.textContent = '...';
+
+  const b64first = first.photos[photoKey].split(',')[1];
+  const b64last = last.photos[photoKey].split(',')[1];
+  const mtype = 'image/jpeg';
+
+  const dataStr = `Zeitraum: ${weeks} Wochen (${fmtLong(first.date)} bis ${fmtLong(last.date)}).
+${wFirst ? 'Gewicht Start: ' + wFirst.weight + ' kg.' : ''}
+${wLast ? 'Gewicht aktuell: ' + wLast.weight + ' kg.' : ''}
+Ziel: Body Recomp (Fett abbauen, Muskeln halten). Makros: 1800 kcal, 132g Eiweiss.`;
 
   try {
     const resp = await fetch('https://api.anthropic.com/v1/messages', {
@@ -766,18 +784,27 @@ async function getStatAi(key) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 500,
-        system: 'Du bist ein präziser Fitness-Analyst. Antworte auf Deutsch, 3-4 Sätze, sachlich motivierend. Gib 1-2 konkrete Empfehlungen.',
-        messages: [{ role: 'user', content: `Analysiere ${keyNames[key]} über ${weeks} Wochen für Body Recomp (Ziel: Fett abbauen, Muskeln halten). Makros: 1800kcal, 132g Eiweiss.\nWerte: ${vals}` }]
+        max_tokens: 600,
+        system: 'Du bist ein einfühlsamer Fitness-Coach. Vergleiche die zwei Körper-Fotos (vorher/nachher) sachlich und motivierend. Antworte auf Deutsch in 4-5 Sätzen. Erwähne sichtbare Veränderungen und gib 1-2 konkrete Empfehlungen.',
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'text', text: 'Das ist das VORHER-Foto (' + labelMap[photoKey] + ', ' + fmtLong(first.date) + '):' },
+            { type: 'image', source: { type: 'base64', media_type: mtype, data: b64first } },
+            { type: 'text', text: 'Das ist das NACHHER-Foto (' + labelMap[photoKey] + ', ' + fmtLong(last.date) + '):' },
+            { type: 'image', source: { type: 'base64', media_type: mtype, data: b64last } },
+            { type: 'text', text: 'Zusätzliche Daten: ' + dataStr + '\nBitte vergleiche die sichtbaren Veränderungen und gib eine ehrliche, motivierende Einschätzung.' }
+          ]
+        }]
       })
     });
     const data = await resp.json();
-    const text = data.content?.find(b => b.type === 'text')?.text || 'Keine Antwort.';
+    const text = data.content?.find(b => b.type === 'text')?.text || 'Keine Antwort erhalten.';
     textEl.textContent = text;
-    if (btn) { btn.textContent = 'Neu analysieren'; btn.disabled = false; }
+    btn.textContent = 'Neu analysieren'; btn.disabled = false;
   } catch(e) {
-    textEl.textContent = 'Fehler. Bitte Verbindung prüfen.';
-    if (btn) { btn.textContent = 'Nochmals'; btn.disabled = false; }
+    textEl.textContent = 'Fehler bei der Analyse. Bitte Internetverbindung prüfen.';
+    btn.textContent = 'Nochmals versuchen'; btn.disabled = false;
   }
 }
 
