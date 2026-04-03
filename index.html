@@ -178,6 +178,7 @@ input:focus, select:focus { outline: none; border-color: var(--green); }
   <div id="ai-section"></div>
   <div class="sec">Letzter Eintrag</div>
   <div class="metric-grid" id="last-metrics"><div class="mc" style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:13px;padding:20px">Noch keine Einträge</div></div>
+  <div id="dashboard-extra"></div>
   <div class="sec">Makros (Yazio)</div>
   <div class="macro-row" id="macro-display"></div>
   <div class="sec">Letzte Fotos</div>
@@ -253,6 +254,11 @@ input:focus, select:focus { outline: none; border-color: var(--green); }
       <div><div class="fl">Fett (g)</div><input type="number" id="m-fat" placeholder="g" inputmode="numeric"></div>
     </div>
   </div>
+  <div class="sec">Notizen</div>
+  <div class="card">
+    <div class="fl">Notiz zu diesem Eintrag (optional)</div>
+    <textarea id="m-notiz" placeholder="z.B. Diese Woche viel trainiert, war krank, Urlaub..." style="width:100%;padding:10px 12px;border:0.5px solid var(--border);border-radius:var(--r-sm);background:var(--bg);color:var(--text);font-size:14px;font-family:'DM Sans',sans-serif;resize:none;min-height:80px;margin-top:4px"></textarea>
+  </div>
   <button class="btn-primary" onclick="saveEntry()">Eintrag speichern</button>
 </div>
 
@@ -290,6 +296,33 @@ input:focus, select:focus { outline: none; border-color: var(--green); }
 <div class="screen" id="screen-einstellungen">
   <div class="header"><h1>Einstellungen</h1></div>
 
+  <div class="sec">Zielwerte</div>
+  <div class="card">
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.5">Setze deine persönlichen Ziele — der Fortschritt wird im Dashboard angezeigt.</div>
+    <div class="field-row">
+      <div><div class="fl">Zielgewicht (kg)</div><input type="number" id="goal-weight" placeholder="z.B. 62" step="0.1" inputmode="decimal"></div>
+      <div><div class="fl">Ziel Bauch (cm)</div><input type="number" id="goal-nabel" placeholder="z.B. 78" step="0.5" inputmode="decimal"></div>
+    </div>
+    <div class="field-row">
+      <div><div class="fl">Ziel Hüfte (cm)</div><input type="number" id="goal-huefte" placeholder="z.B. 95" step="0.5" inputmode="decimal"></div>
+      <div><div class="fl">Ziel Brust (cm)</div><input type="number" id="goal-brust" placeholder="z.B. 92" step="0.5" inputmode="decimal"></div>
+    </div>
+    <button onclick="saveGoals()" style="width:100%;padding:11px;background:var(--green);color:#fff;border:none;border-radius:var(--r-sm);font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif;margin-top:4px">Ziele speichern</button>
+  </div>
+
+  <div class="sec">Darstellung</div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0">
+      <div>
+        <div style="font-size:14px;font-weight:500;color:var(--text)">Dark Mode</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px">Dunkles Design aktivieren</div>
+      </div>
+      <div id="darkmode-toggle" onclick="toggleDarkMode()" style="width:48px;height:28px;border-radius:14px;background:var(--muted);cursor:pointer;position:relative;transition:background 0.2s;flex-shrink:0">
+        <div id="darkmode-knob" style="width:22px;height:22px;border-radius:50%;background:#fff;position:absolute;top:3px;left:3px;transition:left 0.2s"></div>
+      </div>
+    </div>
+  </div>
+
   <div class="sec">Daten sichern</div>
   <div class="card">
     <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px">Backup exportieren</div>
@@ -312,7 +345,7 @@ input:focus, select:focus { outline: none; border-color: var(--green); }
         <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
       </div>
       <div style="font-size:17px;font-weight:500;color:var(--text)">Body Tracker</div>
-      <div style="font-size:13px;color:var(--muted);margin-top:2px">Version 1.0</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:2px">Version 1.1</div>
     </div>
     <div style="border-top:0.5px solid var(--border);padding-top:14px">
       <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0">
@@ -400,6 +433,86 @@ let galView = 'alle';
 let lbIndex = 0;
 let lbPhotos = [];
 
+let goals = {};
+let darkMode = false;
+
+function loadSettings() {
+  try {
+    const g = localStorage.getItem('bt_goals'); if(g) goals = JSON.parse(g);
+    const d = localStorage.getItem('bt_darkmode'); darkMode = d === 'true';
+    applyDarkMode();
+  } catch(e) {}
+}
+
+function saveGoals() {
+  goals = {
+    weight: parseFloat(document.getElementById('goal-weight').value) || null,
+    nabel: parseFloat(document.getElementById('goal-nabel').value) || null,
+    huefte: parseFloat(document.getElementById('goal-huefte').value) || null,
+    brust: parseFloat(document.getElementById('goal-brust').value) || null,
+  };
+  localStorage.setItem('bt_goals', JSON.stringify(goals));
+  showToast('Ziele gespeichert!');
+  renderDashboard();
+}
+
+function toggleDarkMode() {
+  darkMode = !darkMode;
+  localStorage.setItem('bt_darkmode', darkMode);
+  applyDarkMode();
+  renderSettings();
+}
+
+function applyDarkMode() {
+  if (darkMode) {
+    document.documentElement.style.setProperty('--bg', '#111210');
+    document.documentElement.style.setProperty('--bg2', '#1c1e1b');
+    document.documentElement.style.setProperty('--text', '#e8e8e4');
+    document.documentElement.style.setProperty('--muted', '#8a8a84');
+    document.documentElement.style.setProperty('--border', 'rgba(255,255,255,0.1)');
+    document.documentElement.style.setProperty('--green-bg', '#0a2e22');
+    document.documentElement.style.setProperty('--green-mid', '#1D9E75');
+  } else {
+    document.documentElement.style.setProperty('--bg', '#F8F9F7');
+    document.documentElement.style.setProperty('--bg2', '#FFFFFF');
+    document.documentElement.style.setProperty('--text', '#1a1a18');
+    document.documentElement.style.setProperty('--muted', '#6b6b66');
+    document.documentElement.style.setProperty('--border', 'rgba(0,0,0,0.1)');
+    document.documentElement.style.setProperty('--green-bg', '#E1F5EE');
+    document.documentElement.style.setProperty('--green-mid', '#9FE1CB');
+  }
+}
+
+function calcBMI(weight, height = 170) {
+  if (!weight) return null;
+  return (weight / ((height/100) * (height/100))).toFixed(1);
+}
+
+function progressBar(current, goal, isLower) {
+  if (!current || !goal) return '';
+  const start = isLower ? Math.max(current, goal) * 1.1 : Math.min(current, goal) * 0.9;
+  let pct;
+  if (isLower) pct = Math.min(100, Math.max(0, ((start - current) / (start - goal)) * 100));
+  else pct = Math.min(100, Math.max(0, ((current - start) / (goal - start)) * 100));
+  const done = isLower ? current <= goal : current >= goal;
+  return `<div style="margin-top:6px">
+    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px">
+      <span>Ziel: ${goal}${isLower?'kg':'cm'}</span><span>${done?'Erreicht!':Math.round(pct)+'%'}</span>
+    </div>
+    <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+      <div style="height:100%;width:${pct}%;background:${done?'#1D9E75':'#1D9E75'};border-radius:2px;transition:width 0.4s"></div>
+    </div>
+  </div>`;
+}
+
+function getRecords() {
+  if (entries.length === 0) return null;
+  const wEntries = entries.filter(e => e.weight);
+  return {
+    minWeight: wEntries.length ? wEntries.reduce((a,b) => a.weight < b.weight ? a : b) : null,
+    minNabel: entries.filter(e=>e.nabel).reduce((a,b) => a.nabel < b.nabel ? a : b, entries.filter(e=>e.nabel)[0]),
+  };
+}
 function load() {
   try { const s = localStorage.getItem('bodytracker_v3'); entries = s ? JSON.parse(s) : []; } catch(e) { entries = []; }
 }
@@ -446,6 +559,7 @@ function editEntry(date) {
   document.getElementById('m-prot').value = e.prot || '';
   document.getElementById('m-carbs').value = e.carbs || '';
   document.getElementById('m-fat').value = e.fat || '';
+  document.getElementById('m-notiz').value = e.notiz || '';
   // Load existing photos into preview
   tempPhotos = { ...(e.photos || {}) };
   ['front','side','back'].forEach(k => {
@@ -498,17 +612,60 @@ function renderDashboard() {
   const prev = entries.length > 1 ? entries[entries.length - 2] : null;
   if (!last) {
     document.getElementById('last-metrics').innerHTML = '<div class="mc" style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:13px;padding:20px">Noch keine Einträge. Füge deinen ersten Eintrag hinzu!</div>';
+    document.getElementById('dashboard-extra').innerHTML = '';
     document.getElementById('entries-list').innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:12px 0">Noch keine Einträge</div>';
     document.getElementById('ai-section').innerHTML = '';
     return;
   }
 
   document.getElementById('last-metrics').innerHTML = `
-    <div class="mc"><div class="ml">Gewicht</div><div class="mv">${last.weight != null ? last.weight : '–'} <span class="mv-unit">kg</span></div>${chg(prev?.weight, last.weight)}</div>
-    <div class="mc"><div class="ml">Bauch (Nabel)</div><div class="mv">${last.nabel || '–'} <span class="mv-unit">cm</span></div>${chg(prev?.nabel, last.nabel)}</div>
-    <div class="mc"><div class="ml">Hüfte</div><div class="mv">${last.huefte || '–'} <span class="mv-unit">cm</span></div>${chg(prev?.huefte, last.huefte)}</div>
-    <div class="mc"><div class="ml">Brust</div><div class="mv">${last.brust || '–'} <span class="mv-unit">cm</span></div>${chg(prev?.brust, last.brust)}</div>
+    <div class="mc"><div class="ml">Gewicht</div><div class="mv">${last.weight != null ? last.weight : '–'} <span class="mv-unit">kg</span></div>${chg(prev?.weight, last.weight)}${goals.weight ? progressBar(last.weight, goals.weight, true) : ''}</div>
+    <div class="mc"><div class="ml">Bauch (Nabel)</div><div class="mv">${last.nabel || '–'} <span class="mv-unit">cm</span></div>${chg(prev?.nabel, last.nabel)}${goals.nabel ? progressBar(last.nabel, goals.nabel, true) : ''}</div>
+    <div class="mc"><div class="ml">Hüfte</div><div class="mv">${last.huefte || '–'} <span class="mv-unit">cm</span></div>${chg(prev?.huefte, last.huefte)}${goals.huefte ? progressBar(last.huefte, goals.huefte, true) : ''}</div>
+    <div class="mc"><div class="ml">Brust</div><div class="mv">${last.brust || '–'} <span class="mv-unit">cm</span></div>${chg(prev?.brust, last.brust)}${goals.brust ? progressBar(last.brust, goals.brust, true) : ''}</div>
   `;
+
+  const bmi = last.weight ? calcBMI(last.weight) : null;
+  const bmiLabel = bmi ? (bmi < 18.5 ? 'Untergewicht' : bmi < 25 ? 'Normalgewicht' : bmi < 30 ? 'Übergewicht' : 'Adipositas') : '';
+  const bmiColor = bmi ? (bmi < 18.5 ? '#378ADD' : bmi < 25 ? '#1D9E75' : bmi < 30 ? '#D85A30' : '#E24B4A') : '';
+
+  const records = getRecords();
+  const recHtml = records && records.minWeight ? `
+    <div class="sec">Beste Werte</div>
+    <div class="metric-grid">
+      <div class="mc"><div class="ml">Niedrigstes Gewicht</div><div class="mv">${records.minWeight.weight} <span class="mv-unit">kg</span></div><div style="font-size:11px;color:var(--muted);margin-top:2px">${fmt(records.minWeight.date)}</div></div>
+      ${records.minNabel ? `<div class="mc"><div class="ml">Kleinster Bauch</div><div class="mv">${records.minNabel.nabel} <span class="mv-unit">cm</span></div><div style="font-size:11px;color:var(--muted);margin-top:2px">${fmt(records.minNabel.date)}</div></div>` : ''}
+    </div>` : '';
+
+  const wochHtml = prev ? `
+    <div class="sec">Vergleich zur Vorwoche</div>
+    <div class="card" style="padding:12px 16px">
+      ${[
+        {label:'Gewicht', curr:last.weight, prev:prev.weight, unit:'kg'},
+        {label:'Bauch', curr:last.nabel, prev:prev.nabel, unit:'cm'},
+        {label:'Hüfte', curr:last.huefte, prev:prev.huefte, unit:'cm'},
+        {label:'Brust', curr:last.brust, prev:prev.brust, unit:'cm'},
+      ].filter(x=>x.curr&&x.prev).map(x => {
+        const d = (x.curr - x.prev).toFixed(1);
+        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:0.5px solid var(--border)">
+          <span style="font-size:13px;color:var(--muted)">${x.label}</span>
+          <span style="font-size:13px;font-weight:500;color:${d<0?'#1D9E75':d>0?'#D85A30':'var(--muted)'}">${d>0?'+':''}${d} ${x.unit}</span>
+        </div>`;
+      }).join('')}
+    </div>` : '';
+
+  const bmiHtml = bmi ? `
+    <div class="sec">BMI</div>
+    <div class="mc" style="margin-bottom:12px">
+      <div class="ml">Body Mass Index</div>
+      <div style="display:flex;align-items:baseline;gap:8px">
+        <div class="mv">${bmi}</div>
+        <div style="font-size:12px;font-weight:500;color:${bmiColor}">${bmiLabel}</div>
+      </div>
+      <div style="font-size:11px;color:var(--muted);margin-top:3px">Basiert auf 170cm Körpergrösse</div>
+    </div>` : '';
+
+  document.getElementById('dashboard-extra').innerHTML = bmiHtml + recHtml + wochHtml;
 
   document.getElementById('macro-display').innerHTML = `
     <div class="mcard"><div class="mnum">${last.kcal || 1800}</div><div class="mlbl">kcal</div></div>
@@ -527,11 +684,12 @@ function renderDashboard() {
   if (entries.length === 0) { el.innerHTML = '<div style="color:var(--muted);font-size:13px;text-align:center;padding:12px 0">Noch keine Einträge</div>'; return; }
   el.innerHTML = [...entries].reverse().map(e => `
     <div class="entry-row">
-      <div>
+      <div style="flex:1;min-width:0">
         <div class="entry-date">${fmtLong(e.date)}</div>
         <div class="entry-sub">${e.weight ? e.weight + ' kg · ' : ''}${e.nabel ? 'Bauch: ' + e.nabel + 'cm' : ''}</div>
+        ${e.notiz ? `<div style="font-size:11px;color:var(--muted);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">"${e.notiz}"</div>` : ''}
       </div>
-      <div style="display:flex;gap:6px">
+      <div style="display:flex;gap:6px;flex-shrink:0;margin-left:8px">
         <button onclick="editEntry('${e.date}')" style="padding:6px 12px;background:transparent;color:var(--green);border:0.5px solid var(--green);border-radius:var(--r-sm);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap">Bearbeiten</button>
         <button onclick="deleteEntry('${e.date}')" style="padding:6px 12px;background:transparent;color:#D85A30;border:0.5px solid #D85A30;border-radius:var(--r-sm);font-size:12px;cursor:pointer;font-family:'DM Sans',sans-serif;white-space:nowrap">Löschen</button>
       </div>
@@ -646,12 +804,14 @@ function saveEntry() {
     prot: parseFloat(document.getElementById('m-prot').value) || null,
     carbs: parseFloat(document.getElementById('m-carbs').value) || null,
     fat: parseFloat(document.getElementById('m-fat').value) || null,
+    notiz: document.getElementById('m-notiz').value || '',
     photos: { ...tempPhotos }
   };
   const idx = entries.findIndex(e => e.date === date);
   if (idx >= 0) entries[idx] = entry; else entries.push(entry);
   entries.sort((a,b) => a.date.localeCompare(b.date));
   saveLS(); tempPhotos = {};
+  document.getElementById('m-notiz').value = '';
   showToast('Gespeichert!');
   // Reset photo boxes
   ['front','side','back'].forEach(k => {
@@ -845,11 +1005,22 @@ function renderSettings() {
   document.getElementById('settings-photos').textContent = entries.filter(e => e.photos && Object.keys(e.photos).length > 0).length;
   const since = entries.length > 0 ? fmtLong(entries[0].date) : '–';
   document.getElementById('settings-since').textContent = since;
+  if (goals.weight) document.getElementById('goal-weight').value = goals.weight;
+  if (goals.nabel) document.getElementById('goal-nabel').value = goals.nabel;
+  if (goals.huefte) document.getElementById('goal-huefte').value = goals.huefte;
+  if (goals.brust) document.getElementById('goal-brust').value = goals.brust;
+  const toggle = document.getElementById('darkmode-toggle');
+  const knob = document.getElementById('darkmode-knob');
+  if (toggle && knob) {
+    toggle.style.background = darkMode ? '#1D9E75' : 'var(--muted)';
+    knob.style.left = darkMode ? '23px' : '3px';
+  }
 }
 
 // INIT
 document.addEventListener('DOMContentLoaded', () => {
   load();
+  loadSettings();
   document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
   renderDashboard();
 });
