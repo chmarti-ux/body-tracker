@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Body Tracker">
+<meta name="theme-color" content="#1D9E75">
+<title>Body Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+:root {
+  --green: #1D9E75;
+  --green-dark: #0F6E56;
+  --green-darker: #085041;
+  --green-bg: #E1F5EE;
+  --green-mid: #9FE1CB;
+  --coral: #D85A30;
+  --blue: #378ADD;
+  --bg: #F8F9F7;
+  --bg2: #FFFFFF;
+  --text: #1a1a18;
+  --muted: #6b6b66;
+  --border: rgba(0,0,0,0.1);
+  --r: 12px;
+  --r-sm: 8px;
+  --nav-h: 68px;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #111210;
+    --bg2: #1c1e1b;
+    --text: #e8e8e4;
+    --muted: #8a8a84;
+    --border: rgba(255,255,255,0.1);
+    --green-bg: #0a2e22;
+    --green-mid: #1D9E75;
+  }
+}
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); color: var(--text); min-height: 100dvh; overscroll-behavior: none; }
+.app { max-width: 430px; margin: 0 auto; min-height: 100dvh; position: relative; }
+
+/* NAV */
+.bottom-nav { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 430px; height: var(--nav-h); background: var(--bg2); border-top: 0.5px solid var(--border); display: flex; align-items: center; z-index: 100; padding: 0 8px env(safe-area-inset-bottom, 0); }
+.nav-btn { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 8px 4px; border: none; background: transparent; color: var(--muted); cursor: pointer; border-radius: var(--r-sm); transition: color 0.15s; font-family: 'DM Sans', sans-serif; }
+.nav-btn.active { color: var(--green); }
+.nav-btn svg { width: 22px; height: 22px; }
+.nav-btn span { font-size: 10px; font-weight: 500; }
+.nav-dot { width: 4px; height: 4px; border-radius: 50%; background: var(--green); margin-top: 2px; opacity: 0; transition: opacity 0.15s; }
+.nav-btn.active .nav-dot { opacity: 1; }
+
+/* SCREENS */
+.screen { display: none; padding: 20px 16px calc(var(--nav-h) + 20px); }
+.screen.active { display: block; }
+
+/* HEADER */
+.header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.header h1 { font-size: 22px; font-weight: 500; }
+.header-date { font-size: 13px; color: var(--muted); }
+
+/* CARDS */
+.card { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--r); padding: 16px; margin-bottom: 12px; }
+.sec { font-size: 11px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; margin: 20px 0 8px; }
+.sec:first-child { margin-top: 0; }
+
+/* METRIC GRID */
+.metric-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 12px; }
+.mc { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--r-sm); padding: 12px; }
+.ml { font-size: 11px; color: var(--muted); margin-bottom: 4px; }
+.mv { font-size: 22px; font-weight: 500; }
+.mv-unit { font-size: 12px; color: var(--muted); font-weight: 400; }
+.chg { font-size: 11px; margin-top: 3px; }
+.chg.down { color: var(--green); }
+.chg.up { color: var(--coral); }
+
+/* FORMS */
+.fl { font-size: 12px; color: var(--muted); margin-bottom: 4px; margin-top: 12px; }
+.fl:first-child { margin-top: 0; }
+input[type=number], input[type=date], input[type=text], select {
+  width: 100%; padding: 11px 12px; border: 0.5px solid var(--border); border-radius: var(--r-sm);
+  background: var(--bg); color: var(--text); font-size: 15px; font-family: 'DM Sans', sans-serif;
+  appearance: none; -webkit-appearance: none;
+}
+input:focus, select:focus { outline: none; border-color: var(--green); }
+.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+/* BUTTONS */
+.btn-primary { width: 100%; padding: 14px; background: var(--green); color: #fff; border: none; border-radius: var(--r-sm); font-size: 15px; font-weight: 500; cursor: pointer; font-family: 'DM Sans', sans-serif; margin-top: 12px; transition: opacity 0.15s; }
+.btn-primary:active { opacity: 0.85; transform: scale(0.99); }
+.btn-sm { padding: 8px 14px; background: var(--green-darker); color: #fff; border: none; border-radius: var(--r-sm); font-size: 12px; cursor: pointer; font-family: 'DM Sans', sans-serif; display: inline-block; margin-top: 10px; }
+
+/* PHOTOS */
+.photo-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.photo-box { aspect-ratio: 3/4; border: 0.5px dashed var(--border); border-radius: var(--r-sm); background: var(--bg); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; position: relative; overflow: hidden; }
+.photo-box img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
+.photo-box input { position: absolute; inset: 0; opacity: 0; cursor: pointer; z-index: 2; }
+.photo-box-label { font-size: 11px; color: var(--muted); margin-top: 6px; position: relative; z-index: 1; }
+.photo-plus { font-size: 24px; color: var(--muted); position: relative; z-index: 1; line-height: 1; }
+
+/* AI BOX */
+.ai-box { background: var(--green-bg); border-radius: var(--r); padding: 14px 16px; margin-bottom: 12px; }
+.ai-label { font-size: 11px; font-weight: 500; color: var(--green-dark); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+.ai-text { font-size: 14px; color: var(--green-darker); line-height: 1.65; }
+@media (prefers-color-scheme: dark) { .ai-text { color: var(--green-mid); } .ai-label { color: var(--green); } }
+
+/* MACRO ROW */
+.macro-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 12px; }
+.mcard { background: var(--bg2); border: 0.5px solid var(--border); border-radius: var(--r-sm); padding: 10px 6px; text-align: center; }
+.mnum { font-size: 17px; font-weight: 500; }
+.mlbl { font-size: 10px; color: var(--muted); margin-top: 2px; }
+
+/* CHART */
+.chart-wrap { position: relative; width: 100%; height: 220px; }
+.chart-sel { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 12px; }
+.chart-sel button { font-size: 12px; padding: 5px 12px; border: 0.5px solid var(--border); border-radius: 20px; background: transparent; color: var(--muted); cursor: pointer; font-family: 'DM Sans', sans-serif; transition: all 0.15s; }
+.chart-sel button.active { background: var(--green); color: #fff; border-color: var(--green); }
+
+/* GALLERY */
+.gal-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 16px; }
+.gal-filter button { font-size: 12px; padding: 5px 12px; border: 0.5px solid var(--border); border-radius: 20px; background: transparent; color: var(--muted); cursor: pointer; font-family: 'DM Sans', sans-serif; }
+.gal-filter button.active { background: var(--green); color: #fff; border-color: var(--green); }
+.gal-date-title { font-size: 13px; font-weight: 500; color: var(--text); margin: 16px 0 8px; }
+.gal-date-title:first-child { margin-top: 0; }
+.gal-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 4px; }
+.gal-item { aspect-ratio: 3/4; border-radius: var(--r-sm); overflow: hidden; position: relative; cursor: pointer; background: var(--bg2); }
+.gal-item img { width: 100%; height: 100%; object-fit: cover; }
+.gal-badge { position: absolute; top: 5px; left: 5px; background: rgba(8,80,65,0.75); color: #9FE1CB; font-size: 9px; padding: 2px 6px; border-radius: 10px; }
+.gal-date { position: absolute; bottom: 0; left: 0; right: 0; background: rgba(8,80,65,0.65); color: #9FE1CB; font-size: 9px; padding: 3px 5px; text-align: center; }
+.compare-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 16px; }
+.compare-slot { border: 0.5px solid var(--border); border-radius: var(--r-sm); overflow: hidden; background: var(--bg2); }
+.compare-slot img { width: 100%; aspect-ratio: 3/4; object-fit: cover; display: block; }
+.compare-hdr { font-size: 11px; color: var(--muted); padding: 6px; text-align: center; }
+.compare-section-title { font-size: 13px; font-weight: 500; margin: 16px 0 8px; }
+
+/* LIGHTBOX */
+.lightbox-overlay { position: fixed; inset: 0; background: rgba(4,52,44,0.95); z-index: 200; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 24px; }
+.lightbox-overlay img { max-width: 100%; max-height: 75dvh; object-fit: contain; border-radius: var(--r-sm); }
+.lb-info { color: #9FE1CB; font-size: 13px; margin-top: 14px; text-align: center; }
+.lb-close { margin-top: 16px; padding: 10px 28px; background: rgba(255,255,255,0.12); color: #fff; border: none; border-radius: 24px; font-size: 14px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+.lb-nav { display: flex; gap: 12px; margin-top: 12px; }
+.lb-nav button { padding: 8px 20px; background: rgba(255,255,255,0.1); color: #9FE1CB; border: none; border-radius: 20px; font-size: 13px; cursor: pointer; font-family: 'DM Sans', sans-serif; }
+
+/* VERLAUF */
+.entry-row { display: flex; justify-content: space-between; align-items: center; padding: 10px 0; border-bottom: 0.5px solid var(--border); }
+.entry-row:last-child { border-bottom: none; }
+.entry-date { font-size: 14px; font-weight: 500; }
+.entry-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+.entry-right { text-align: right; }
+.badge { font-size: 10px; padding: 2px 8px; border-radius: 12px; background: var(--green-bg); color: var(--green-dark); }
+
+/* TOAST */
+.toast { position: fixed; bottom: calc(var(--nav-h) + 12px); left: 50%; transform: translateX(-50%); background: var(--green-darker); color: #fff; padding: 10px 22px; border-radius: 24px; font-size: 13px; opacity: 0; transition: opacity 0.25s; pointer-events: none; z-index: 300; white-space: nowrap; }
+.toast.show { opacity: 1; }
+
+/* EMPTY STATE */
+.empty { text-align: center; padding: 40px 20px; color: var(--muted); font-size: 14px; }
+.empty-icon { font-size: 40px; margin-bottom: 12px; }
+
+/* LOADING */
+.loading-text { font-size: 13px; color: var(--green); padding: 4px 0; }
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- DASHBOARD -->
+<div class="screen active" id="screen-dashboard">
+  <div class="header">
+    <h1>Body Tracker</h1>
+    <div class="header-date" id="today-date"></div>
+  </div>
+  <div id="ai-section"></div>
+  <div class="sec">Letzter Eintrag</div>
+  <div class="metric-grid" id="last-metrics"><div class="mc" style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:13px;padding:20px">Noch keine Einträge</div></div>
+  <div class="sec">Makros (Yazio)</div>
+  <div class="macro-row" id="macro-display"></div>
+  <div class="sec">Letzte Fotos</div>
+  <div class="photo-row" id="last-photos"></div>
+</div>
+
+<!-- EINTRAG -->
+<div class="screen" id="screen-eintrag">
+  <div class="header"><h1>Neuer Eintrag</h1></div>
+  <div class="card">
+    <div class="fl">Datum</div>
+    <input type="date" id="inp-date">
+    <div class="fl">Gewicht (kg)</div>
+    <input type="number" id="inp-weight" placeholder="z.B. 64.6" step="0.1" inputmode="decimal">
+  </div>
+  <div class="sec">Körpermaße (cm)</div>
+  <div class="card">
+    <div class="field-row">
+      <div><div class="fl">Schulter</div><input type="number" id="m-schulter" placeholder="cm" step="0.5" inputmode="decimal"></div>
+      <div><div class="fl">Brust</div><input type="number" id="m-brust" placeholder="cm" step="0.5" inputmode="decimal"></div>
+    </div>
+    <div class="field-row">
+      <div><div class="fl">Rechter Arm</div><input type="number" id="m-rarm" placeholder="cm" step="0.5" inputmode="decimal"></div>
+      <div><div class="fl">Linker Arm</div><input type="number" id="m-larm" placeholder="cm" step="0.5" inputmode="decimal"></div>
+    </div>
+    <div class="field-row">
+      <div><div class="fl">5cm über Nabel</div><input type="number" id="m-ob" placeholder="cm" step="0.5" inputmode="decimal"></div>
+      <div><div class="fl">Bauch am Nabel</div><input type="number" id="m-nabel" placeholder="cm" step="0.5" inputmode="decimal"></div>
+    </div>
+    <div class="field-row">
+      <div><div class="fl">5cm unter Nabel</div><input type="number" id="m-un" placeholder="cm" step="0.5" inputmode="decimal"></div>
+      <div><div class="fl">Hüfte</div><input type="number" id="m-huefte" placeholder="cm" step="0.5" inputmode="decimal"></div>
+    </div>
+    <div class="field-row">
+      <div><div class="fl">Rechtes Bein</div><input type="number" id="m-rbein" placeholder="cm" step="0.5" inputmode="decimal"></div>
+      <div><div class="fl">Linkes Bein</div><input type="number" id="m-lbein" placeholder="cm" step="0.5" inputmode="decimal"></div>
+    </div>
+  </div>
+  <div class="sec">Fotos</div>
+  <div class="photo-row">
+    <div>
+      <div class="photo-box" id="box-front">
+        <div class="photo-plus">+</div>
+        <div class="photo-box-label">Vorne</div>
+        <input type="file" accept="image/*" capture="environment" onchange="loadPhoto(event,'front','box-front')">
+      </div>
+    </div>
+    <div>
+      <div class="photo-box" id="box-side">
+        <div class="photo-plus">+</div>
+        <div class="photo-box-label">Seite</div>
+        <input type="file" accept="image/*" capture="environment" onchange="loadPhoto(event,'side','box-side')">
+      </div>
+    </div>
+    <div>
+      <div class="photo-box" id="box-back">
+        <div class="photo-plus">+</div>
+        <div class="photo-box-label">Hinten</div>
+        <input type="file" accept="image/*" capture="environment" onchange="loadPhoto(event,'back','box-back')">
+      </div>
+    </div>
+  </div>
+  <div class="sec">Kalorien & Makros (aus Yazio)</div>
+  <div class="card">
+    <div class="field-row">
+      <div><div class="fl">Kalorien</div><input type="number" id="m-kcal" placeholder="kcal" inputmode="numeric"></div>
+      <div><div class="fl">Eiweiss (g)</div><input type="number" id="m-prot" placeholder="g" inputmode="numeric"></div>
+    </div>
+    <div class="field-row">
+      <div><div class="fl">Kohlenhydrate (g)</div><input type="number" id="m-carbs" placeholder="g" inputmode="numeric"></div>
+      <div><div class="fl">Fett (g)</div><input type="number" id="m-fat" placeholder="g" inputmode="numeric"></div>
+    </div>
+  </div>
+  <button class="btn-primary" onclick="saveEntry()">Eintrag speichern</button>
+</div>
+
+<!-- GALERIE -->
+<div class="screen" id="screen-galerie">
+  <div class="header"><h1>Galerie</h1></div>
+  <div class="gal-filter">
+    <button class="active" onclick="setGalView('alle',this)">Alle</button>
+    <button onclick="setGalView('vorne',this)">Vorne</button>
+    <button onclick="setGalView('seite',this)">Seite</button>
+    <button onclick="setGalView('hinten',this)">Hinten</button>
+    <button onclick="setGalView('vergleich',this)">Vorher/Nachher</button>
+  </div>
+  <div id="gal-content"></div>
+</div>
+
+<!-- STATISTIK -->
+<div class="screen" id="screen-statistik">
+  <div class="header"><h1>Statistik</h1></div>
+  <div class="chart-sel">
+    <button class="active" onclick="selChart('gewicht',this)">Gewicht</button>
+    <button onclick="selChart('schulter',this)">Schulter</button>
+    <button onclick="selChart('brust',this)">Brust</button>
+    <button onclick="selChart('nabel',this)">Bauch</button>
+    <button onclick="selChart('huefte',this)">Hüfte</button>
+    <button onclick="selChart('arm',this)">Arme</button>
+    <button onclick="selChart('bein',this)">Beine</button>
+  </div>
+  <div class="card"><div class="chart-wrap"><canvas id="stat-chart"></canvas></div></div>
+  <div class="metric-grid" id="stat-summary"></div>
+  <div id="ai-stat"></div>
+</div>
+
+<!-- BOTTOM NAV -->
+<nav class="bottom-nav">
+  <button class="nav-btn active" onclick="switchTab('dashboard',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+    <span>Dashboard</span>
+    <div class="nav-dot"></div>
+  </button>
+  <button class="nav-btn" onclick="switchTab('eintrag',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+    <span>Eintrag</span>
+    <div class="nav-dot"></div>
+  </button>
+  <button class="nav-btn" onclick="switchTab('galerie',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+    <span>Galerie</span>
+    <div class="nav-dot"></div>
+  </button>
+  <button class="nav-btn" onclick="switchTab('statistik',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+    <span>Statistik</span>
+    <div class="nav-dot"></div>
+  </button>
+</nav>
+
+<!-- LIGHTBOX -->
+<div class="lightbox-overlay" id="lightbox" style="display:none" onclick="closeLightbox(event)">
+  <img id="lb-img" src="">
+  <div class="lb-info" id="lb-info"></div>
+  <div class="lb-nav">
+    <button onclick="lbNav(-1)">&#8592; Vorher</button>
+    <button onclick="lbNav(1)">Nachher &#8594;</button>
+  </div>
+  <button class="lb-close" onclick="closeLb()">Schliessen</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const DEMO = [
+  {date:'2026-01-06',weight:null,schulter:99,brust:98,rarm:31.5,larm:31.5,ob:84,nabel:90,un:96,huefte:97,rbein:57,lbein:57,kcal:1800,prot:132,carbs:176,fat:58,photos:{}},
+  {date:'2026-01-17',weight:null,schulter:103.5,brust:99.5,rarm:30,larm:30,ob:82,nabel:86.5,un:92,huefte:101.5,rbein:59,lbein:60,kcal:1800,prot:132,carbs:176,fat:58,photos:{}},
+  {date:'2026-01-24',weight:null,schulter:102.5,brust:96,rarm:30,larm:30.5,ob:80.5,nabel:88,un:92.5,huefte:101,rbein:58.5,lbein:58.5,kcal:1800,prot:132,carbs:176,fat:58,photos:{}},
+  {date:'2026-02-15',weight:66.2,schulter:103.5,brust:97.5,rarm:31,larm:31,ob:79.5,nabel:86,un:90.5,huefte:102,rbein:59.5,lbein:60,kcal:1800,prot:132,carbs:176,fat:58,photos:{}},
+  {date:'2026-02-28',weight:65.6,schulter:100,brust:97,rarm:30.5,larm:30,ob:78.5,nabel:84,un:89.5,huefte:101.5,rbein:59,lbein:60,kcal:1800,prot:132,carbs:176,fat:58,photos:{}},
+  {date:'2026-03-13',weight:64.6,schulter:99.5,brust:97.5,rarm:31,larm:31,ob:79,nabel:83.5,un:88.5,huefte:102.5,rbein:59,lbein:59,kcal:1800,prot:132,carbs:176,fat:58,photos:{}},
+  {date:'2026-04-03',weight:64.6,schulter:101,brust:95,rarm:30,larm:30,ob:79,nabel:83,un:88.5,huefte:102,rbein:59,lbein:59,kcal:1800,prot:132,carbs:176,fat:58,photos:{}},
+];
+
+let entries = [];
+let tempPhotos = {};
+let activeChart = null;
+let curChartKey = 'gewicht';
+let galView = 'alle';
+let lbIndex = 0;
+let lbPhotos = [];
+
+function load() {
+  try { const s = localStorage.getItem('bodytracker_v3'); entries = s ? JSON.parse(s) : [...DEMO]; } catch(e) { entries = [...DEMO]; }
+}
+function saveLS() { try { localStorage.setItem('bodytracker_v3', JSON.stringify(entries)); } catch(e) { showToast('Speicher voll – alte Fotos löschen'); } }
+function fmt(d) { return new Date(d+'T00:00').toLocaleDateString('de-CH',{day:'2-digit',month:'2-digit',year:'2-digit'}); }
+function fmtLong(d) { return new Date(d+'T00:00').toLocaleDateString('de-CH',{day:'2-digit',month:'long',year:'numeric'}); }
+
+function showToast(msg) {
+  const t = document.getElementById('toast'); t.textContent = msg;
+  t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+function switchTab(tab, btn) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('screen-'+tab).classList.add('active');
+  btn.classList.add('active');
+  if (tab === 'statistik') renderChart(curChartKey);
+  if (tab === 'galerie') renderGalerie();
+  if (tab === 'dashboard') renderDashboard();
+  window.scrollTo(0, 0);
+}
+
+function chg(a, b) {
+  if (a == null || b == null) return '';
+  const d = (b - a).toFixed(1);
+  return `<div class="chg ${d < 0 ? 'down' : d > 0 ? 'up' : ''}">${d > 0 ? '+' : ''}${d}</div>`;
+}
+
+function renderDashboard() {
+  document.getElementById('today-date').textContent = new Date().toLocaleDateString('de-CH', {weekday:'short', day:'2-digit', month:'short'});
+  const last = entries[entries.length - 1];
+  const prev = entries.length > 1 ? entries[entries.length - 2] : null;
+  if (!last) { document.getElementById('last-metrics').innerHTML = '<div class="mc" style="grid-column:1/-1;text-align:center;color:var(--muted);font-size:13px;padding:20px">Noch keine Einträge. Füge deinen ersten Eintrag hinzu!</div>'; return; }
+
+  document.getElementById('last-metrics').innerHTML = `
+    <div class="mc"><div class="ml">Gewicht</div><div class="mv">${last.weight != null ? last.weight : '–'} <span class="mv-unit">kg</span></div>${chg(prev?.weight, last.weight)}</div>
+    <div class="mc"><div class="ml">Bauch (Nabel)</div><div class="mv">${last.nabel || '–'} <span class="mv-unit">cm</span></div>${chg(prev?.nabel, last.nabel)}</div>
+    <div class="mc"><div class="ml">Hüfte</div><div class="mv">${last.huefte || '–'} <span class="mv-unit">cm</span></div>${chg(prev?.huefte, last.huefte)}</div>
+    <div class="mc"><div class="ml">Brust</div><div class="mv">${last.brust || '–'} <span class="mv-unit">cm</span></div>${chg(prev?.brust, last.brust)}</div>
+  `;
+
+  document.getElementById('macro-display').innerHTML = `
+    <div class="mcard"><div class="mnum">${last.kcal || 1800}</div><div class="mlbl">kcal</div></div>
+    <div class="mcard"><div class="mnum">${last.prot || 132}<span style="font-size:9px">g</span></div><div class="mlbl">Eiweiss</div></div>
+    <div class="mcard"><div class="mnum">${last.carbs || 176}<span style="font-size:9px">g</span></div><div class="mlbl">Kohlenhydrate</div></div>
+    <div class="mcard"><div class="mnum">${last.fat || 58}<span style="font-size:9px">g</span></div><div class="mlbl">Fett</div></div>
+  `;
+
+  const lp = document.getElementById('last-photos');
+  const hasPhotos = last.photos && Object.keys(last.photos).length > 0;
+  lp.innerHTML = hasPhotos
+    ? ['front','side','back'].map(k => `<div class="photo-box" onclick="openLightboxSingle('${entries.length-1}','${k}')" style="cursor:pointer">${last.photos[k] ? `<img src="${last.photos[k]}">` : ''}<div class="photo-box-label" style="position:relative;z-index:1">${k==='front'?'Vorne':k==='side'?'Seite':'Hinten'}</div></div>`).join('')
+    : '<div style="color:var(--muted);font-size:13px;padding:12px 0;grid-column:1/-1;text-align:center">Noch keine Fotos. Beim nächsten Eintrag hinzufügen!</div>';
+
+  buildAiBox();
+}
+
+function buildAiBox() {
+  const first = entries[0], last = entries[entries.length - 1];
+  const wE = entries.filter(e => e.weight != null);
+  const wDiff = wE.length > 1 ? (wE[wE.length-1].weight - wE[0].weight).toFixed(1) : null;
+  const nDiff = (last.nabel && first.nabel) ? (last.nabel - first.nabel).toFixed(1) : null;
+  const weeks = Math.round((new Date(last.date) - new Date(first.date)) / (7*86400000));
+  let tip = '';
+  if (wDiff && wDiff < 0) tip += `Du hast seit Beginn ${Math.abs(wDiff)} kg abgenommen. `;
+  if (nDiff && nDiff < 0) tip += `Dein Bauchumfang ist um ${Math.abs(nDiff)} cm gesunken. `;
+  if (weeks > 0) tip += `In ${weeks} Wochen sehr guter Fortschritt! `;
+  tip += 'Weiter so mit 1800 kcal und 132g Eiweiss — ideal für Body Recomp.';
+
+  document.getElementById('ai-section').innerHTML = `
+    <div class="ai-box">
+      <div class="ai-label">KI-Auswertung</div>
+      <div class="ai-text" id="ai-text-content">${tip}</div>
+      <button class="btn-sm" onclick="getAi()">Detaillierte Analyse laden</button>
+    </div>
+  `;
+}
+
+async function getAi() {
+  const first = entries[0], last = entries[entries.length-1];
+  const wE = entries.filter(e => e.weight);
+  const weeks = Math.round((new Date(last.date) - new Date(first.date)) / (7*86400000));
+  const dataStr = `Ziel: Body Recomp (Fett abbauen, Muskeln halten). Zeitraum: ${weeks} Wochen.
+Gewicht: ${wE.map(e => e.weight+'kg ('+fmt(e.date)+')').join(', ') || 'keine Daten'}.
+Bauch am Nabel: ${entries.map(e => e.nabel+'cm ('+fmt(e.date)+')').join(', ')}.
+Brust: ${entries.map(e => e.brust+'cm').join(', ')}.
+Hüfte: ${entries.map(e => e.huefte+'cm').join(', ')}.
+Makros aktuell: ${last.kcal||1800} kcal, ${last.prot||132}g Eiweiss, ${last.carbs||176}g Kohlenhydrate, ${last.fat||58}g Fett.`;
+
+  const btn = document.querySelector('#ai-section .btn-sm');
+  if (btn) { btn.textContent = 'Wird analysiert...'; btn.disabled = true; }
+  document.getElementById('ai-text-content').textContent = 'KI analysiert deine Daten...';
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 600,
+        system: 'Du bist ein freundlicher, präziser Fitness-Coach. Antworte auf Deutsch, 3-5 Sätze, motivierend und konkret. Gib 2 klare Empfehlungen.',
+        messages: [{ role: 'user', content: 'Analysiere meine Fortschritte:\n' + dataStr }]
+      })
+    });
+    const data = await resp.json();
+    const text = data.content?.find(b => b.type === 'text')?.text || 'Keine Antwort erhalten.';
+    document.getElementById('ai-text-content').textContent = text;
+    if (btn) { btn.textContent = 'Neu analysieren'; btn.disabled = false; }
+  } catch(e) {
+    document.getElementById('ai-text-content').textContent = 'Analyse nicht verfügbar. Bitte Internetverbindung prüfen.';
+    if (btn) { btn.textContent = 'Nochmals versuchen'; btn.disabled = false; }
+  }
+}
+
+function loadPhoto(e, key, boxId) {
+  const file = e.target.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    // Compress image
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      const MAX = 800;
+      let w = img.width, h = img.height;
+      if (w > h && w > MAX) { h = h * MAX / w; w = MAX; }
+      else if (h > MAX) { w = w * MAX / h; h = MAX; }
+      canvas.width = w; canvas.height = h;
+      canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+      const compressed = canvas.toDataURL('image/jpeg', 0.75);
+      tempPhotos[key] = compressed;
+      const box = document.getElementById(boxId);
+      let imgEl = box.querySelector('img');
+      if (!imgEl) { imgEl = document.createElement('img'); box.appendChild(imgEl); }
+      imgEl.src = compressed;
+      box.querySelector('.photo-plus').style.display = 'none';
+      box.querySelector('.photo-box-label').style.display = 'none';
+    };
+    img.src = ev.target.result;
+  };
+  r.readAsDataURL(file);
+}
+
+function saveEntry() {
+  const date = document.getElementById('inp-date').value;
+  if (!date) { showToast('Bitte Datum angeben'); return; }
+  const entry = {
+    date,
+    weight: parseFloat(document.getElementById('inp-weight').value) || null,
+    schulter: parseFloat(document.getElementById('m-schulter').value) || null,
+    brust: parseFloat(document.getElementById('m-brust').value) || null,
+    rarm: parseFloat(document.getElementById('m-rarm').value) || null,
+    larm: parseFloat(document.getElementById('m-larm').value) || null,
+    ob: parseFloat(document.getElementById('m-ob').value) || null,
+    nabel: parseFloat(document.getElementById('m-nabel').value) || null,
+    un: parseFloat(document.getElementById('m-un').value) || null,
+    huefte: parseFloat(document.getElementById('m-huefte').value) || null,
+    rbein: parseFloat(document.getElementById('m-rbein').value) || null,
+    lbein: parseFloat(document.getElementById('m-lbein').value) || null,
+    kcal: parseFloat(document.getElementById('m-kcal').value) || null,
+    prot: parseFloat(document.getElementById('m-prot').value) || null,
+    carbs: parseFloat(document.getElementById('m-carbs').value) || null,
+    fat: parseFloat(document.getElementById('m-fat').value) || null,
+    photos: { ...tempPhotos }
+  };
+  const idx = entries.findIndex(e => e.date === date);
+  if (idx >= 0) entries[idx] = entry; else entries.push(entry);
+  entries.sort((a,b) => a.date.localeCompare(b.date));
+  saveLS(); tempPhotos = {};
+  showToast('Gespeichert!');
+  // Reset photo boxes
+  ['front','side','back'].forEach(k => {
+    const box = document.getElementById('box-'+k.replace('front','front').replace('side','side').replace('back','back'));
+    if (box) { const img = box.querySelector('img'); if(img) img.remove(); box.querySelector('.photo-plus').style.display=''; box.querySelector('.photo-box-label').style.display=''; }
+  });
+  renderDashboard();
+}
+
+// GALERIE
+function setGalView(view, btn) {
+  galView = view;
+  document.querySelectorAll('.gal-filter button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderGalerie();
+}
+
+function renderGalerie() {
+  const wrap = document.getElementById('gal-content');
+  const withPhotos = entries.filter(e => e.photos && Object.keys(e.photos).length > 0);
+
+  if (galView === 'vergleich') {
+    if (withPhotos.length < 2) { wrap.innerHTML = '<div class="empty"><div class="empty-icon">📷</div>Mindestens 2 Einträge mit Fotos für den Vergleich nötig.</div>'; return; }
+    const first = withPhotos[0], last = withPhotos[withPhotos.length-1];
+    const pairs = [{key:'front',label:'Vorne'},{key:'side',label:'Seite'},{key:'back',label:'Hinten'}];
+    wrap.innerHTML = pairs.filter(p => first.photos[p.key] || last.photos[p.key]).map(p => `
+      <div class="compare-section-title">${p.label}</div>
+      <div class="compare-grid">
+        <div class="compare-slot">${first.photos[p.key] ? `<img src="${first.photos[p.key]}" onclick="openLightboxSingle(0,'${p.key}')">` : '<div style="aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">Kein Foto</div>'}<div class="compare-hdr">Vorher &middot; ${fmt(first.date)}</div></div>
+        <div class="compare-slot">${last.photos[p.key] ? `<img src="${last.photos[p.key]}" onclick="openLightboxSingle(${entries.length-1},'${p.key}')">` : '<div style="aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:12px">Kein Foto</div>'}<div class="compare-hdr">Nachher &middot; ${fmt(last.date)}</div></div>
+      </div>
+    `).join('');
+    return;
+  }
+
+  const keyMap = { alle:['front','side','back'], vorne:['front'], seite:['side'], hinten:['back'] };
+  const labelMap = { front:'Vorne', side:'Seite', back:'Hinten' };
+  const keys = keyMap[galView] || ['front','side','back'];
+
+  lbPhotos = [];
+  let html = '';
+  [...withPhotos].reverse().forEach((e, ri) => {
+    const photos = keys.filter(k => e.photos[k]);
+    if (!photos.length) return;
+    const eIdx = entries.findIndex(x => x.date === e.date);
+    html += `<div class="gal-date-title">${fmtLong(e.date)}${e.weight ? ' &middot; ' + e.weight + ' kg' : ''}</div><div class="gal-grid">`;
+    photos.forEach(k => {
+      const lbI = lbPhotos.length;
+      lbPhotos.push({ src: e.photos[k], date: e.date, weight: e.weight, label: labelMap[k], eIdx });
+      html += `<div class="gal-item" onclick="openLightbox(${lbI})"><img src="${e.photos[k]}">${galView==='alle'?`<div class="gal-badge">${labelMap[k]}</div>`:''}<div class="gal-date">${fmt(e.date)}</div></div>`;
+    });
+    html += '</div>';
+  });
+  wrap.innerHTML = html || '<div class="empty"><div class="empty-icon">📷</div>Noch keine Fotos gespeichert. Füge beim Eintrag Fotos hinzu!</div>';
+}
+
+function openLightbox(idx) {
+  lbIndex = idx;
+  const p = lbPhotos[idx];
+  document.getElementById('lb-img').src = p.src;
+  document.getElementById('lb-info').textContent = `${p.label} · ${fmtLong(p.date)}${p.weight ? ' · ' + p.weight + ' kg' : ''}`;
+  document.getElementById('lightbox').style.display = 'flex';
+  document.body.style.overflow = 'hidden';
+}
+
+function openLightboxSingle(eIdx, key) {
+  const e = entries[eIdx];
+  if (!e || !e.photos || !e.photos[key]) return;
+  const labelMap = { front:'Vorne', side:'Seite', back:'Hinten' };
+  lbPhotos = [{ src: e.photos[key], date: e.date, weight: e.weight, label: labelMap[key] }];
+  openLightbox(0);
+}
+
+function closeLb() { document.getElementById('lightbox').style.display = 'none'; document.body.style.overflow = ''; }
+function closeLightbox(e) { if (e.target === document.getElementById('lightbox')) closeLb(); }
+function lbNav(dir) {
+  const next = lbIndex + dir;
+  if (next >= 0 && next < lbPhotos.length) openLightbox(next);
+}
+
+// STATISTIK
+function selChart(key, btn) {
+  curChartKey = key;
+  document.querySelectorAll('.chart-sel button').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderChart(key);
+}
+
+function renderChart(key) {
+  const labels = entries.map(e => fmt(e.date));
+  const c = { g:'#1D9E75', o:'#D85A30', b:'#378ADD' };
+  let datasets = [];
+  if (key === 'gewicht') {
+    datasets = [{ label:'Gewicht (kg)', data: entries.map(e => e.weight), borderColor: c.g, backgroundColor:'rgba(29,158,117,0.07)', tension:0.35, fill:true, pointRadius:5, pointBackgroundColor:c.g }];
+  } else if (key === 'schulter') {
+    datasets = [{ label:'Schulter', data: entries.map(e => e.schulter), borderColor:c.g, tension:0.35, pointRadius:4, pointBackgroundColor:c.g }];
+  } else if (key === 'brust') {
+    datasets = [{ label:'Brust', data: entries.map(e => e.brust), borderColor:c.b, tension:0.35, pointRadius:4, pointBackgroundColor:c.b }];
+  } else if (key === 'nabel') {
+    datasets = [
+      { label:'5cm über Nabel', data: entries.map(e => e.ob), borderColor:c.g, tension:0.35, pointRadius:4, pointBackgroundColor:c.g },
+      { label:'Bauch am Nabel', data: entries.map(e => e.nabel), borderColor:c.o, tension:0.35, pointRadius:4, pointBackgroundColor:c.o },
+      { label:'5cm unter Nabel', data: entries.map(e => e.un), borderColor:c.b, tension:0.35, pointRadius:4, pointBackgroundColor:c.b },
+    ];
+  } else if (key === 'huefte') {
+    datasets = [{ label:'Hüfte', data: entries.map(e => e.huefte), borderColor:c.o, tension:0.35, pointRadius:4, pointBackgroundColor:c.o }];
+  } else if (key === 'arm') {
+    datasets = [
+      { label:'Rechter Arm', data: entries.map(e => e.rarm), borderColor:c.g, tension:0.35, pointRadius:4, pointBackgroundColor:c.g },
+      { label:'Linker Arm', data: entries.map(e => e.larm), borderColor:c.o, tension:0.35, pointRadius:4, pointBackgroundColor:c.o },
+    ];
+  } else if (key === 'bein') {
+    datasets = [
+      { label:'Rechtes Bein', data: entries.map(e => e.rbein), borderColor:c.g, tension:0.35, pointRadius:4, pointBackgroundColor:c.g },
+      { label:'Linkes Bein', data: entries.map(e => e.lbein), borderColor:c.b, tension:0.35, pointRadius:4, pointBackgroundColor:c.b },
+    ];
+  }
+
+  if (activeChart) activeChart.destroy();
+  const isDark = matchMedia('(prefers-color-scheme:dark)').matches;
+  const gridColor = isDark ? 'rgba(255,255,255,0.07)' : 'rgba(0,0,0,0.06)';
+  const tickColor = isDark ? '#8a8a84' : '#6b6b66';
+  const ctx = document.getElementById('stat-chart').getContext('2d');
+  activeChart = new Chart(ctx, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      plugins: { legend: { display: datasets.length > 1, position:'top', labels: { font:{size:11,family:"'DM Sans',sans-serif"}, boxWidth:10, padding:12, color:tickColor } } },
+      scales: {
+        x: { ticks: { font:{size:10,family:"'DM Sans',sans-serif"}, maxRotation:45, color:tickColor }, grid: { color:gridColor } },
+        y: { ticks: { font:{size:11,family:"'DM Sans',sans-serif"}, color:tickColor }, grid: { color:gridColor } }
+      }
+    }
+  });
+
+  const first = entries[0], last = entries[entries.length-1];
+  let sum = '';
+  if (key === 'gewicht' && first.weight && last.weight) {
+    const d = (last.weight - first.weight).toFixed(1);
+    sum = `
+      <div class="mc"><div class="ml">Startgewicht</div><div class="mv">${first.weight} <span class="mv-unit">kg</span></div></div>
+      <div class="mc"><div class="ml">Aktuell</div><div class="mv">${last.weight} <span class="mv-unit">kg</span></div><div class="chg ${d<0?'down':'up'}">${d>0?'+':''}${d} kg gesamt</div></div>
+    `;
+  }
+  document.getElementById('stat-summary').innerHTML = sum;
+
+  const aiStat = document.getElementById('ai-stat');
+  const keyNames = {gewicht:'Gewicht',schulter:'Schulter',brust:'Brust',nabel:'Bauchumfang',huefte:'Hüfte',arm:'Arme',bein:'Beine'};
+  aiStat.innerHTML = `<div class="ai-box"><div class="ai-label">KI-Analyse: ${keyNames[key]}</div><div class="ai-text" id="ai-stat-text">Tippe auf "Analyse laden" für eine KI-Auswertung dieser Messung.</div><button class="btn-sm" onclick="getStatAi('${key}')">Analyse laden</button></div>`;
+}
+
+async function getStatAi(key) {
+  const keyNames = {gewicht:'Gewicht',schulter:'Schulter',brust:'Brust',nabel:'Bauchumfang',huefte:'Hüfte',arm:'Arme',bein:'Beine'};
+  const first = entries[0], last = entries[entries.length-1];
+  const weeks = Math.round((new Date(last.date) - new Date(first.date)) / (7*86400000));
+  let vals = '';
+  if (key === 'gewicht') vals = entries.filter(e => e.weight).map(e => `${e.weight}kg (${fmt(e.date)})`).join(', ');
+  else if (key === 'nabel') vals = entries.map(e => `oben:${e.ob}, Nabel:${e.nabel}, unten:${e.un} (${fmt(e.date)})`).join(' | ');
+  else if (key === 'arm') vals = entries.map(e => `R:${e.rarm}/L:${e.larm}cm (${fmt(e.date)})`).join(', ');
+  else if (key === 'bein') vals = entries.map(e => `R:${e.rbein}/L:${e.lbein}cm (${fmt(e.date)})`).join(', ');
+  else vals = entries.map(e => `${e[key]}cm (${fmt(e.date)})`).join(', ');
+
+  const textEl = document.getElementById('ai-stat-text');
+  const btn = document.querySelector('#ai-stat .btn-sm');
+  textEl.textContent = 'Wird analysiert...';
+  if (btn) { btn.disabled = true; btn.textContent = '...'; }
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 500,
+        system: 'Du bist ein präziser Fitness-Analyst. Antworte auf Deutsch, 3-4 Sätze, sachlich motivierend. Gib 1-2 konkrete Empfehlungen.',
+        messages: [{ role: 'user', content: `Analysiere ${keyNames[key]} über ${weeks} Wochen für Body Recomp (Ziel: Fett abbauen, Muskeln halten). Makros: 1800kcal, 132g Eiweiss.\nWerte: ${vals}` }]
+      })
+    });
+    const data = await resp.json();
+    const text = data.content?.find(b => b.type === 'text')?.text || 'Keine Antwort.';
+    textEl.textContent = text;
+    if (btn) { btn.textContent = 'Neu analysieren'; btn.disabled = false; }
+  } catch(e) {
+    textEl.textContent = 'Fehler. Bitte Verbindung prüfen.';
+    if (btn) { btn.textContent = 'Nochmals'; btn.disabled = false; }
+  }
+}
+
+// INIT
+document.addEventListener('DOMContentLoaded', () => {
+  load();
+  document.getElementById('inp-date').value = new Date().toISOString().split('T')[0];
+  renderDashboard();
+});
+</script>
+</body>
+</html>
