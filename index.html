@@ -223,21 +223,21 @@ input:focus, select:focus { outline: none; border-color: var(--green); }
       <div class="photo-box" id="box-front">
         <div class="photo-plus">+</div>
         <div class="photo-box-label">Vorne</div>
-        <input type="file" accept="image/*" capture="environment" onchange="loadPhoto(event,'front','box-front')">
+        <input type="file" accept="image/*" onchange="loadPhoto(event,'front','box-front')">
       </div>
     </div>
     <div>
       <div class="photo-box" id="box-side">
         <div class="photo-plus">+</div>
         <div class="photo-box-label">Seite</div>
-        <input type="file" accept="image/*" capture="environment" onchange="loadPhoto(event,'side','box-side')">
+        <input type="file" accept="image/*" onchange="loadPhoto(event,'side','box-side')">
       </div>
     </div>
     <div>
       <div class="photo-box" id="box-back">
         <div class="photo-plus">+</div>
         <div class="photo-box-label">Hinten</div>
-        <input type="file" accept="image/*" capture="environment" onchange="loadPhoto(event,'back','box-back')">
+        <input type="file" accept="image/*" onchange="loadPhoto(event,'back','box-back')">
       </div>
     </div>
   </div>
