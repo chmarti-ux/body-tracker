@@ -7,6 +7,8 @@
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Body Tracker">
 <meta name="theme-color" content="#1D9E75">
+<link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%231D9E75'/><text x='90' y='88' text-anchor='middle' font-family='system-ui,sans-serif' font-size='52' font-weight='800' fill='white'>BODY</text><text x='90' y='148' text-anchor='middle' font-family='system-ui,sans-serif' font-size='52' font-weight='800' fill='white'>TRACKER</text></svg>">
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 180 180'><rect width='180' height='180' rx='40' fill='%231D9E75'/><text x='90' y='88' text-anchor='middle' font-family='system-ui,sans-serif' font-size='52' font-weight='800' fill='white'>BODY</text><text x='90' y='148' text-anchor='middle' font-family='system-ui,sans-serif' font-size='52' font-weight='800' fill='white'>TRACKER</text></svg>">
 <title>Body Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -182,7 +184,6 @@ input:focus, select:focus { outline: none; border-color: var(--green); }
   <div class="photo-row" id="last-photos"></div>
   <div class="sec">Einträge verwalten</div>
   <div class="card" id="entries-list"></div>
-
 </div>
 
 <!-- EINTRAG -->
@@ -285,6 +286,44 @@ input:focus, select:focus { outline: none; border-color: var(--green); }
   <div id="ai-stat"></div>
 </div>
 
+<!-- EINSTELLUNGEN -->
+<div class="screen" id="screen-einstellungen">
+  <div class="header"><h1>Einstellungen</h1></div>
+
+  <div class="sec">Daten sichern</div>
+  <div class="card">
+    <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px">Backup exportieren</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.5">Speichere alle deine Einträge als Datei. Wichtig vor einer Neuinstallation der App.</div>
+    <button onclick="exportData()" style="width:100%;padding:12px;background:var(--green);color:#fff;border:none;border-radius:var(--r-sm);font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif">Daten exportieren</button>
+  </div>
+
+  <div class="sec">Daten wiederherstellen</div>
+  <div class="card">
+    <div style="font-size:14px;font-weight:500;color:var(--text);margin-bottom:4px">Backup importieren</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.5">Stelle deine Daten aus einer gespeicherten Backup-Datei wieder her.</div>
+    <button onclick="document.getElementById('import-file').click()" style="width:100%;padding:12px;background:transparent;color:var(--green);border:0.5px solid var(--green);border-radius:var(--r-sm);font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif">Daten importieren</button>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(event)">
+  </div>
+
+  <div class="sec">Über die App</div>
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0">
+      <span style="font-size:14px;color:var(--text)">Version</span>
+      <span style="font-size:14px;color:var(--muted)">1.0</span>
+    </div>
+    <div style="border-top:0.5px solid var(--border);margin:10px 0"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0">
+      <span style="font-size:14px;color:var(--text)">Einträge gesamt</span>
+      <span style="font-size:14px;color:var(--muted)" id="settings-count">0</span>
+    </div>
+    <div style="border-top:0.5px solid var(--border);margin:10px 0"></div>
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:4px 0">
+      <span style="font-size:14px;color:var(--text)">Einträge mit Fotos</span>
+      <span style="font-size:14px;color:var(--muted)" id="settings-photos">0</span>
+    </div>
+  </div>
+</div>
+
 <!-- BOTTOM NAV -->
 <nav class="bottom-nav">
   <button class="nav-btn active" onclick="switchTab('dashboard',this)">
@@ -305,6 +344,11 @@ input:focus, select:focus { outline: none; border-color: var(--green); }
   <button class="nav-btn" onclick="switchTab('statistik',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
     <span>Statistik</span>
+    <div class="nav-dot"></div>
+  </button>
+  <button class="nav-btn" onclick="switchTab('einstellungen',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    <span>Einstellungen</span>
     <div class="nav-dot"></div>
   </button>
 </nav>
@@ -423,6 +467,7 @@ function switchTab(tab, btn) {
   if (tab === 'statistik') renderChart(curChartKey);
   if (tab === 'galerie') renderGalerie();
   if (tab === 'dashboard') renderDashboard();
+  if (tab === 'einstellungen') renderSettings();
   window.scrollTo(0, 0);
 }
 
@@ -740,6 +785,49 @@ function renderChart(key) {
   document.getElementById('stat-summary').innerHTML = sum;
 
   document.getElementById('ai-stat').innerHTML = '';
+}
+
+function exportData() {
+  if (entries.length === 0) { showToast('Keine Daten zum Exportieren'); return; }
+  const json = JSON.stringify(entries, null, 2);
+  const blob = new Blob([json], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const date = new Date().toISOString().split('T')[0];
+  a.href = url;
+  a.download = 'bodytracker-backup-' + date + '.json';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('Backup gespeichert!');
+}
+
+function importData(e) {
+  const file = e.target.files[0]; if (!file) return;
+  const r = new FileReader();
+  r.onload = ev => {
+    try {
+      const imported = JSON.parse(ev.target.result);
+      if (!Array.isArray(imported)) throw new Error('Ungültiges Format');
+      const existing = entries.length;
+      imported.forEach(imp => {
+        const idx = entries.findIndex(x => x.date === imp.date);
+        if (idx >= 0) entries[idx] = imp; else entries.push(imp);
+      });
+      entries.sort((a,b) => a.date.localeCompare(b.date));
+      saveLS();
+      renderDashboard();
+      showToast(imported.length + ' Einträge importiert!');
+    } catch(err) {
+      showToast('Fehler: Ungültige Backup-Datei');
+    }
+  };
+  r.readAsText(file);
+  e.target.value = '';
+}
+
+function renderSettings() {
+  document.getElementById('settings-count').textContent = entries.length;
+  document.getElementById('settings-photos').textContent = entries.filter(e => e.photos && Object.keys(e.photos).length > 0).length;
 }
 
 // INIT
