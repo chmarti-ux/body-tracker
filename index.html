@@ -312,9 +312,16 @@ input:focus, select:focus { outline: none; border-color: var(--green); }
 
   <div class="sec">Persönliche Angaben</div>
   <div class="card">
-    <div class="fl" style="margin-top:0">Körpergrösse (cm)</div>
+    <div class="fl" style="margin-top:0">Geschlecht</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:12px">
+      <button id="btn-male" onclick="setGender('male')" style="padding:10px;border:0.5px solid var(--border);border-radius:var(--r-sm);background:transparent;color:var(--text);font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s">Mann</button>
+      <button id="btn-female" onclick="setGender('female')" style="padding:10px;border:0.5px solid var(--border);border-radius:var(--r-sm);background:transparent;color:var(--text);font-size:14px;cursor:pointer;font-family:'DM Sans',sans-serif;transition:all 0.15s">Frau</button>
+    </div>
+    <div class="fl">Körpergrösse (cm)</div>
     <input type="number" id="inp-height" placeholder="z.B. 172" step="1" inputmode="numeric" style="margin-bottom:12px">
-    <button onclick="saveHeight()" style="width:100%;padding:11px;background:var(--green);color:#fff;border:none;border-radius:var(--r-sm);font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif">Grösse speichern</button>
+    <div class="fl">Halsumfang (cm) — für Körperfett-Berechnung</div>
+    <input type="number" id="inp-neck" placeholder="z.B. 38" step="0.5" inputmode="decimal" style="margin-bottom:12px">
+    <button onclick="savePersonal()" style="width:100%;padding:11px;background:var(--green);color:#fff;border:none;border-radius:var(--r-sm);font-size:14px;font-weight:500;cursor:pointer;font-family:'DM Sans',sans-serif">Angaben speichern</button>
   </div>
 
   <div class="sec">Darstellung</div>
@@ -443,23 +450,52 @@ let lbPhotos = [];
 let goals = {};
 let darkMode = false;
 let userHeight = 170;
+let userGender = 'male';
+let userNeck = null;
 
 function loadSettings() {
   try {
     const g = localStorage.getItem('bt_goals'); if(g) goals = JSON.parse(g);
     const d = localStorage.getItem('bt_darkmode'); darkMode = d === 'true';
     const h = localStorage.getItem('bt_height'); if(h) userHeight = parseFloat(h);
+    const gen = localStorage.getItem('bt_gender'); if(gen) userGender = gen;
+    const n = localStorage.getItem('bt_neck'); if(n) userNeck = parseFloat(n);
     applyDarkMode();
   } catch(e) {}
 }
 
-function saveHeight() {
+function setGender(g) {
+  userGender = g;
+  document.getElementById('btn-male').style.background = g === 'male' ? 'var(--green)' : 'transparent';
+  document.getElementById('btn-male').style.color = g === 'male' ? '#fff' : 'var(--text)';
+  document.getElementById('btn-male').style.borderColor = g === 'male' ? 'var(--green)' : 'var(--border)';
+  document.getElementById('btn-female').style.background = g === 'female' ? 'var(--green)' : 'transparent';
+  document.getElementById('btn-female').style.color = g === 'female' ? '#fff' : 'var(--text)';
+  document.getElementById('btn-female').style.borderColor = g === 'female' ? 'var(--green)' : 'var(--border)';
+}
+
+function savePersonal() {
   const h = parseFloat(document.getElementById('inp-height').value);
-  if (!h || h < 100 || h > 250) { showToast('Bitte gültige Grösse eingeben'); return; }
-  userHeight = h;
-  localStorage.setItem('bt_height', h);
-  showToast('Grösse gespeichert!');
+  const n = parseFloat(document.getElementById('inp-neck').value);
+  if (h && (h < 100 || h > 250)) { showToast('Bitte gültige Grösse eingeben'); return; }
+  if (h) { userHeight = h; localStorage.setItem('bt_height', h); }
+  if (n) { userNeck = n; localStorage.setItem('bt_neck', n); }
+  localStorage.setItem('bt_gender', userGender);
+  showToast('Angaben gespeichert!');
   renderDashboard();
+}
+
+function calcBodyFat(weight, nabel, huefte, neck) {
+  if (!weight || !nabel || !neck || !userHeight) return null;
+  const h = userHeight;
+  if (userGender === 'male') {
+    const bf = 495 / (1.0324 - 0.19077 * Math.log10(nabel - neck) + 0.15456 * Math.log10(h)) - 450;
+    return Math.max(0, bf).toFixed(1);
+  } else {
+    if (!huefte) return null;
+    const bf = 495 / (1.29579 - 0.35004 * Math.log10(nabel + huefte - neck) + 0.22100 * Math.log10(h)) - 450;
+    return Math.max(0, bf).toFixed(1);
+  }
 }
 
 function saveGoals() {
@@ -507,23 +543,13 @@ function calcBMI(weight) {
   return (weight / (h * h)).toFixed(1);
 }
 
-function progressBar(current, goal, isLower, unit) {
+function goalDiff(current, goal, unit) {
   if (!current || !goal) return '';
-  const start = isLower ? Math.max(current, goal) * 1.1 : Math.min(current, goal) * 0.9;
-  let pct;
-  if (isLower) pct = Math.min(100, Math.max(0, ((start - current) / (start - goal)) * 100));
-  else pct = Math.min(100, Math.max(0, ((current - start) / (goal - start)) * 100));
-  const done = isLower ? current <= goal : current >= goal;
-  const diff = Math.abs(current - goal).toFixed(1);
-  const label = done ? 'Erreicht!' : (isLower ? `-${diff} ${unit} zum Ziel` : `+${diff} ${unit} zum Ziel`);
-  return `<div style="margin-top:6px">
-    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px">
-      <span>Ziel: ${goal} ${unit}</span><span style="color:${done?'#1D9E75':'var(--muted)'}">${label}</span>
-    </div>
-    <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
-      <div style="height:100%;width:${pct}%;background:#1D9E75;border-radius:2px;transition:width 0.4s"></div>
-    </div>
-  </div>`;
+  const diff = (current - goal).toFixed(1);
+  const done = Math.abs(current - goal) <= 0.5;
+  const color = done ? '#1D9E75' : 'var(--muted)';
+  const label = done ? 'Ziel erreicht!' : `${parseFloat(diff) > 0 ? '+' : ''}${diff} ${unit} zum Ziel`;
+  return `<div style="font-size:11px;color:${color};margin-top:4px">Ziel: ${goal} ${unit} · ${label}</div>`;
 }
 
 function getRecords() {
@@ -640,10 +666,10 @@ function renderDashboard() {
   }
 
   document.getElementById('last-metrics').innerHTML = `
-    <div class="mc"><div class="ml">Gewicht</div><div class="mv">${last.weight != null ? last.weight : '–'} <span class="mv-unit">kg</span></div>${chg(prev?.weight, last.weight)}${goals.weight ? progressBar(last.weight, goals.weight, true, 'kg') : ''}</div>
-    <div class="mc"><div class="ml">Bauch (Nabel)</div><div class="mv">${last.nabel || '–'} <span class="mv-unit">cm</span></div>${chg(prev?.nabel, last.nabel)}${goals.nabel ? progressBar(last.nabel, goals.nabel, true, 'cm') : ''}</div>
-    <div class="mc"><div class="ml">Hüfte</div><div class="mv">${last.huefte || '–'} <span class="mv-unit">cm</span></div>${chg(prev?.huefte, last.huefte)}${goals.huefte ? progressBar(last.huefte, goals.huefte, true, 'cm') : ''}</div>
-    <div class="mc"><div class="ml">Brust</div><div class="mv">${last.brust || '–'} <span class="mv-unit">cm</span></div>${chg(prev?.brust, last.brust)}${goals.brust ? progressBar(last.brust, goals.brust, true, 'cm') : ''}</div>
+    <div class="mc"><div class="ml">Gewicht</div><div class="mv">${last.weight != null ? last.weight : '–'} <span class="mv-unit">kg</span></div>${goals.weight ? goalDiff(last.weight, goals.weight, 'kg') : ''}</div>
+    <div class="mc"><div class="ml">Bauch (Nabel)</div><div class="mv">${last.nabel || '–'} <span class="mv-unit">cm</span></div>${goals.nabel ? goalDiff(last.nabel, goals.nabel, 'cm') : ''}</div>
+    <div class="mc"><div class="ml">Hüfte</div><div class="mv">${last.huefte || '–'} <span class="mv-unit">cm</span></div>${goals.huefte ? goalDiff(last.huefte, goals.huefte, 'cm') : ''}</div>
+    <div class="mc"><div class="ml">Brust</div><div class="mv">${last.brust || '–'} <span class="mv-unit">cm</span></div>${goals.brust ? goalDiff(last.brust, goals.brust, 'cm') : ''}</div>
   `;
 
   const bmi = last.weight ? calcBMI(last.weight) : null;
@@ -675,15 +701,25 @@ function renderDashboard() {
       }).join('')}
     </div>` : '';
 
+  const bf = calcBodyFat(last.weight, last.nabel, last.huefte, userNeck);
+  const bfLabel = bf ? (parseFloat(bf) < 10 ? 'Sehr schlank' : parseFloat(bf) < 20 ? 'Fit' : parseFloat(bf) < 25 ? 'Durchschnitt' : parseFloat(bf) < 30 ? 'Über Durchschnitt' : 'Hoch') : '';
+  const bfColor = bf ? (parseFloat(bf) < 20 ? '#1D9E75' : parseFloat(bf) < 25 ? '#378ADD' : parseFloat(bf) < 30 ? '#D85A30' : '#E24B4A') : '';
+
   const bmiHtml = bmi ? `
-    <div class="sec">BMI</div>
-    <div class="mc" style="margin-bottom:12px">
-      <div class="ml">Body Mass Index</div>
-      <div style="display:flex;align-items:baseline;gap:8px">
-        <div class="mv">${bmi}</div>
-        <div style="font-size:12px;font-weight:500;color:${bmiColor}">${bmiLabel}</div>
+    <div class="sec">Körperwerte</div>
+    <div class="metric-grid" style="margin-bottom:12px">
+      <div class="mc">
+        <div class="ml">BMI</div>
+        <div style="display:flex;align-items:baseline;gap:6px"><div class="mv">${bmi}</div><div style="font-size:12px;font-weight:500;color:${bmiColor}">${bmiLabel}</div></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">Basiert auf ${userHeight}cm</div>
       </div>
-      <div style="font-size:11px;color:var(--muted);margin-top:3px">Basiert auf ${userHeight}cm Körpergrösse</div>
+      ${bf ? `<div class="mc">
+        <div class="ml">Körperfett</div>
+        <div style="display:flex;align-items:baseline;gap:6px"><div class="mv">${bf}<span class="mv-unit">%</span></div><div style="font-size:12px;font-weight:500;color:${bfColor}">${bfLabel}</div></div>
+        <div style="font-size:11px;color:var(--muted);margin-top:3px">Navy-Methode</div>
+      </div>` : `<div class="mc" style="display:flex;align-items:center;justify-content:center">
+        <div style="font-size:12px;color:var(--muted);text-align:center;padding:4px">Halsumfang in Einstellungen eintragen</div>
+      </div>`}
     </div>` : '';
 
   const first = entries[0];
@@ -699,23 +735,29 @@ function renderDashboard() {
     <div class="card" style="padding:14px 16px">
       <div style="font-size:12px;color:var(--muted);margin-bottom:10px">${fmtLong(first.date)} → ${fmtLong(last.date)} · ${weeks} Woche${weeks!==1?'n':''}</div>
       ${[
-        {label:'Gewicht', diff:wDiff, unit:'kg', lowerIsBetter:true},
-        {label:'Bauch (Nabel)', diff:nDiff, unit:'cm', lowerIsBetter:true},
-        {label:'Hüfte', diff:hDiff, unit:'cm', lowerIsBetter:true},
-        {label:'Brust', diff:bDiff, unit:'cm', lowerIsBetter:true},
+        {label:'Gewicht', diff:wDiff, unit:'kg', start:wE.length?wE[0].weight:null, current:last.weight},
+        {label:'Bauch (Nabel)', diff:nDiff, unit:'cm', start:first.nabel, current:last.nabel},
+        {label:'Hüfte', diff:hDiff, unit:'cm', start:first.huefte, current:last.huefte},
+        {label:'Brust', diff:bDiff, unit:'cm', start:first.brust, current:last.brust},
       ].filter(x=>x.diff!==null).map(x => {
-        const isGood = x.lowerIsBetter ? x.diff < 0 : x.diff > 0;
+        const isGood = parseFloat(x.diff) < 0;
         const isNeutral = parseFloat(x.diff) === 0;
         const color = isNeutral ? 'var(--muted)' : isGood ? '#1D9E75' : '#D85A30';
         const icon = isNeutral ? '→' : isGood ? '↓' : '↑';
-        return `<div style="display:flex;justify-content:space-between;align-items:center;padding:6px 0;border-bottom:0.5px solid var(--border)">
-          <span style="font-size:13px;color:var(--muted)">${x.label}</span>
-          <span style="font-size:14px;font-weight:500;color:${color}">${icon} ${Math.abs(x.diff)} ${x.unit}</span>
+        return `<div style="padding:8px 0;border-bottom:0.5px solid var(--border)">
+          <div style="display:flex;justify-content:space-between;align-items:center">
+            <span style="font-size:13px;color:var(--muted)">${x.label}</span>
+            <span style="font-size:14px;font-weight:500;color:${color}">${icon} ${Math.abs(x.diff)} ${x.unit}</span>
+          </div>
+          <div style="display:flex;justify-content:space-between;margin-top:3px">
+            <span style="font-size:11px;color:var(--muted)">Start: ${x.start} ${x.unit}</span>
+            <span style="font-size:11px;color:var(--muted)">Aktuell: ${x.current} ${x.unit}</span>
+          </div>
         </div>`;
       }).join('')}
     </div>` : '';
 
-  document.getElementById('dashboard-extra').innerHTML = gesamtHtml + bmiHtml + recHtml + wochHtml;
+  document.getElementById('dashboard-extra').innerHTML = gesamtHtml + bmiHtml;
 
   document.getElementById('macro-display').innerHTML = `
     <div class="mcard"><div class="mnum">${last.kcal || 1800}</div><div class="mlbl">kcal</div></div>
@@ -1060,6 +1102,8 @@ function renderSettings() {
   if (goals.huefte) document.getElementById('goal-huefte').value = goals.huefte;
   if (goals.brust) document.getElementById('goal-brust').value = goals.brust;
   document.getElementById('inp-height').value = userHeight !== 170 ? userHeight : '';
+  if (userNeck) document.getElementById('inp-neck').value = userNeck;
+  setGender(userGender);
   const toggle = document.getElementById('darkmode-toggle');
   const knob = document.getElementById('darkmode-knob');
   if (toggle && knob) {
