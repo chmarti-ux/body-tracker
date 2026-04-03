@@ -507,19 +507,21 @@ function calcBMI(weight) {
   return (weight / (h * h)).toFixed(1);
 }
 
-function progressBar(current, goal, isLower) {
+function progressBar(current, goal, isLower, unit) {
   if (!current || !goal) return '';
   const start = isLower ? Math.max(current, goal) * 1.1 : Math.min(current, goal) * 0.9;
   let pct;
   if (isLower) pct = Math.min(100, Math.max(0, ((start - current) / (start - goal)) * 100));
   else pct = Math.min(100, Math.max(0, ((current - start) / (goal - start)) * 100));
   const done = isLower ? current <= goal : current >= goal;
+  const diff = Math.abs(current - goal).toFixed(1);
+  const label = done ? 'Erreicht!' : (isLower ? `-${diff} ${unit} zum Ziel` : `+${diff} ${unit} zum Ziel`);
   return `<div style="margin-top:6px">
     <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:3px">
-      <span>Ziel: ${goal}${isLower?'kg':'cm'}</span><span>${done?'Erreicht!':Math.round(pct)+'%'}</span>
+      <span>Ziel: ${goal} ${unit}</span><span style="color:${done?'#1D9E75':'var(--muted)'}">${label}</span>
     </div>
     <div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
-      <div style="height:100%;width:${pct}%;background:${done?'#1D9E75':'#1D9E75'};border-radius:2px;transition:width 0.4s"></div>
+      <div style="height:100%;width:${pct}%;background:#1D9E75;border-radius:2px;transition:width 0.4s"></div>
     </div>
   </div>`;
 }
@@ -638,10 +640,10 @@ function renderDashboard() {
   }
 
   document.getElementById('last-metrics').innerHTML = `
-    <div class="mc"><div class="ml">Gewicht</div><div class="mv">${last.weight != null ? last.weight : '–'} <span class="mv-unit">kg</span></div>${chg(prev?.weight, last.weight)}${goals.weight ? progressBar(last.weight, goals.weight, true) : ''}</div>
-    <div class="mc"><div class="ml">Bauch (Nabel)</div><div class="mv">${last.nabel || '–'} <span class="mv-unit">cm</span></div>${chg(prev?.nabel, last.nabel)}${goals.nabel ? progressBar(last.nabel, goals.nabel, true) : ''}</div>
-    <div class="mc"><div class="ml">Hüfte</div><div class="mv">${last.huefte || '–'} <span class="mv-unit">cm</span></div>${chg(prev?.huefte, last.huefte)}${goals.huefte ? progressBar(last.huefte, goals.huefte, true) : ''}</div>
-    <div class="mc"><div class="ml">Brust</div><div class="mv">${last.brust || '–'} <span class="mv-unit">cm</span></div>${chg(prev?.brust, last.brust)}${goals.brust ? progressBar(last.brust, goals.brust, true) : ''}</div>
+    <div class="mc"><div class="ml">Gewicht</div><div class="mv">${last.weight != null ? last.weight : '–'} <span class="mv-unit">kg</span></div>${chg(prev?.weight, last.weight)}${goals.weight ? progressBar(last.weight, goals.weight, true, 'kg') : ''}</div>
+    <div class="mc"><div class="ml">Bauch (Nabel)</div><div class="mv">${last.nabel || '–'} <span class="mv-unit">cm</span></div>${chg(prev?.nabel, last.nabel)}${goals.nabel ? progressBar(last.nabel, goals.nabel, true, 'cm') : ''}</div>
+    <div class="mc"><div class="ml">Hüfte</div><div class="mv">${last.huefte || '–'} <span class="mv-unit">cm</span></div>${chg(prev?.huefte, last.huefte)}${goals.huefte ? progressBar(last.huefte, goals.huefte, true, 'cm') : ''}</div>
+    <div class="mc"><div class="ml">Brust</div><div class="mv">${last.brust || '–'} <span class="mv-unit">cm</span></div>${chg(prev?.brust, last.brust)}${goals.brust ? progressBar(last.brust, goals.brust, true, 'cm') : ''}</div>
   `;
 
   const bmi = last.weight ? calcBMI(last.weight) : null;
